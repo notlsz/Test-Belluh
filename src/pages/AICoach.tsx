@@ -1,0 +1,245 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Insight, ChatMessage, RelationshipArchetype, UserPersona } from '../types';
+import { chatWithBelluh, generateDailyReflection, getRelationshipArchetype, softenConflictMessage, detectPersonaFromEntries } from '../services/geminiService';
+import { Sparkles, Send, Wand2, Activity, ArrowUp } from 'lucide-react';
+
+interface AICoachProps {
+  insights: Insight[];
+  entryTexts: string[];
+  onTriggerPremium: () => void;
+}
+
+const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremium }) => {
+  const [reflection, setReflection] = useState<string>('');
+  const [archetype, setArchetype] = useState<RelationshipArchetype | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const [isConflictMode, setIsConflictMode] = useState(false);
+  const [detectedPersona, setDetectedPersona] = useState<UserPersona>(UserPersona.Woolf);
+  
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Data
+  useEffect(() => {
+    const fetchData = async () => {
+        const dummyEntries: any[] = entryTexts.map(text => ({ content: text, timestamp: new Date(), authorName: 'User' }));
+        const persona = await detectPersonaFromEntries(dummyEntries);
+        setDetectedPersona(persona);
+
+        // Generate Reflection
+        const text = await generateDailyReflection(entryTexts, persona);
+        setReflection(text);
+        
+        // Generate Archetype
+        const arch = await getRelationshipArchetype(entryTexts);
+        setArchetype(arch);
+
+        // Initial Greeting
+        let initialMsg = "Hello.";
+        switch(persona) {
+            case UserPersona.Kafka:
+                initialMsg = "I've analyzed your recent entries. I notice a pattern of anxiety following moments of closeness. Shall we unpack that?";
+                break;
+            case UserPersona.Hemingway:
+                initialMsg = "I've reviewed the log. Ready to process.";
+                break;
+            case UserPersona.Nietzsche:
+                initialMsg = "You are asking big questions. Let's see if the answers are already in your writing.";
+                break;
+            case UserPersona.Fitzgerald:
+                initialMsg = "Your journal reads like a novel. Let's look at the latest chapter together.";
+                break;
+            default:
+                initialMsg = "Hello. I'm Belluh. I've been reading your story. How are you feeling today?";
+        }
+        setMessages([{ id: '1', role: 'model', text: initialMsg, timestamp: new Date() }]);
+    };
+    fetchData();
+  }, [entryTexts]);
+
+  const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+      scrollToBottom();
+  }, [messages, isTyping]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    
+    setIsTyping(true);
+    let messageToSend = chatInput;
+    let uiMessage = chatInput;
+
+    if (isConflictMode) {
+        const softened = await softenConflictMessage(chatInput);
+        uiMessage = softened; 
+        
+        const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: softened, timestamp: new Date() };
+        setMessages(prev => [...prev, userMsg]);
+        
+        const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: "I've softened your words to help love flow through the conflict. This version is safer to share.", timestamp: new Date() };
+        setMessages(prev => [...prev, aiMsg]);
+        setChatInput('');
+        setIsConflictMode(false);
+        setIsTyping(false);
+        return;
+    }
+
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: uiMessage, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    
+    const historyForAI = messages.map(m => ({ role: m.role, text: m.text }));
+    const aiResponseText = await chatWithBelluh(messageToSend, historyForAI, detectedPersona);
+    
+    const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: aiResponseText, timestamp: new Date() };
+    setMessages(prev => [...prev, aiMsg]);
+    setIsTyping(false);
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-white text-slate-900 font-sans selection:bg-belluh-100">
+       
+       {/* Minimal Header */}
+       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-transparent">
+         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors">
+                <span className="text-sm font-bold font-serif text-slate-700">Belluh</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-sm font-medium text-slate-500">{detectedPersona} Mode</span>
+            </div>
+            {isConflictMode && (
+                <div className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                    Conflict Mediator Active
+                </div>
+            )}
+         </div>
+       </div>
+
+       {/* Chat Area */}
+       <div className="flex-1 overflow-y-auto">
+           <div className="max-w-3xl mx-auto px-4 py-10 pb-48 space-y-8">
+               
+               {/* Context Card */}
+               {reflection && messages.length === 1 && (
+                   <div className="mb-12 animate-fade-in">
+                        <div className="flex items-center gap-2 mb-3 opacity-50">
+                            <Activity size={14} />
+                            <span className="text-xs font-bold uppercase tracking-widest">Current Context</span>
+                        </div>
+                        <h2 className="text-xl md:text-2xl font-serif text-slate-800 leading-relaxed italic opacity-80">
+                            "{reflection}"
+                        </h2>
+                   </div>
+               )}
+
+               {messages.map((msg) => (
+                   <div key={msg.id} className={`group animate-slide-up ${msg.role === 'user' ? 'flex justify-end' : ''}`}>
+                       <div className={`
+                           max-w-[85%] md:max-w-[80%] rounded-3xl p-5 md:p-6 text-[16px] leading-relaxed
+                           ${msg.role === 'user' 
+                               ? 'bg-slate-100 text-slate-800' 
+                               : 'bg-transparent text-slate-900 pl-0'
+                           }
+                       `}>
+                           {msg.role === 'model' ? (
+                               <div className="flex gap-4 md:gap-6">
+                                   <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
+                                       <Sparkles size={14} />
+                                   </div>
+                                   <div className="prose prose-slate prose-p:font-serif prose-p:text-lg prose-p:leading-loose max-w-none">
+                                       <p>{msg.text}</p>
+                                   </div>
+                               </div>
+                           ) : (
+                               <p className="font-medium">{msg.text}</p>
+                           )}
+                       </div>
+                   </div>
+               ))}
+
+                {isTyping && (
+                    <div className="flex gap-4 md:gap-6 animate-fade-in pl-0">
+                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 shadow-sm">
+                            <Sparkles size={14} />
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-2">
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+           </div>
+       </div>
+
+       {/* Input Area */}
+       <div className="fixed bottom-0 left-0 right-0 p-4 pb-28 bg-gradient-to-t from-white via-white to-transparent pt-12 z-40">
+            <div className="max-w-2xl mx-auto relative flex flex-col">
+                {/* Conflict Toggle - Positioned cleanly above input */}
+                <div className="flex justify-start mb-2 pl-1">
+                    <button 
+                        onClick={() => setIsConflictMode(!isConflictMode)}
+                        className={`
+                            py-1.5 px-4 rounded-full transition-all duration-300 flex items-center gap-2 shadow-sm border text-xs font-bold uppercase tracking-wide
+                            ${isConflictMode 
+                                ? 'bg-rose-50 text-rose-600 border-rose-100 ring-2 ring-rose-50 translate-y-1' 
+                                : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            }
+                        `}
+                    >
+                        <Wand2 size={14} className={isConflictMode ? "animate-pulse" : ""} />
+                        <span>{isConflictMode ? 'Mediation Active' : 'Mediate Conflict'}</span>
+                    </button>
+                </div>
+
+                <div className={`
+                    w-full relative rounded-[26px] shadow-2xl transition-all duration-300 border
+                    ${isConflictMode 
+                        ? 'bg-rose-50 shadow-rose-100/50 border-rose-100' 
+                        : 'bg-white shadow-slate-200/50 border-slate-200 focus-within:shadow-slate-300/60 focus-within:border-slate-300'
+                    }
+                `}>
+                    <textarea
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if(e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage();
+                            }
+                        }}
+                        placeholder={isConflictMode ? "Write your frustration here..." : "Message Belluh..."}
+                        className="w-full bg-transparent border-none py-4 pl-5 pr-12 max-h-40 min-h-[56px] resize-none focus:outline-none text-slate-800 placeholder:text-slate-400 text-[16px]"
+                        rows={1}
+                    />
+                    <button 
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim()}
+                        className={`
+                            absolute bottom-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
+                            ${chatInput.trim() 
+                                ? 'bg-slate-900 text-white hover:bg-black active:scale-95' 
+                                : 'bg-slate-100 text-slate-300'
+                            }
+                        `}
+                    >
+                        <ArrowUp size={20} strokeWidth={2.5} />
+                    </button>
+                </div>
+                
+                <p className="text-center text-[10px] text-slate-300 mt-3 font-medium w-full">
+                    Belluh can make mistakes. Trust your heart.
+                </p>
+            </div>
+       </div>
+    </div>
+  );
+};
+
+export default AICoach;
