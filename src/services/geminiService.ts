@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { JournalEntry, Insight, RelationshipArchetype, UserPersona, ChatMessage, Mood } from "../types";
 
 // Initialize Gemini with the API Key from environment variables (polyfilled by Vite)
@@ -35,16 +35,6 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
     }
     throw error;
   }
-}
-
-// Ensure the enum values for Schema match what the API expects
-enum SchemaType {
-  STRING = 'STRING',
-  NUMBER = 'NUMBER',
-  INTEGER = 'INTEGER',
-  BOOLEAN = 'BOOLEAN',
-  ARRAY = 'ARRAY',
-  OBJECT = 'OBJECT'
 }
 
 export const generateFutureLetter = async (entries: JournalEntry[], userName: string, partnerName: string): Promise<string> => {
@@ -146,15 +136,15 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
-                    type: SchemaType.ARRAY,
+                    type: Type.ARRAY,
                     items: {
-                        type: SchemaType.OBJECT,
+                        type: Type.OBJECT,
                         properties: {
-                            id: { type: SchemaType.STRING },
-                            title: { type: SchemaType.STRING },
-                            content: { type: SchemaType.STRING },
-                            type: { type: SchemaType.STRING, enum: ['Weekly', 'Pattern', 'Suggestion', 'Growth', 'Pulse', 'Archetype', 'Spiral', 'Nostalgia'] },
-                            relatedEntryIds: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+                            id: { type: Type.STRING },
+                            title: { type: Type.STRING },
+                            content: { type: Type.STRING },
+                            type: { type: Type.STRING, enum: ['Weekly', 'Pattern', 'Suggestion', 'Growth', 'Pulse', 'Archetype', 'Spiral', 'Nostalgia'] },
+                            relatedEntryIds: { type: Type.ARRAY, items: { type: Type.STRING } }
                         }
                     }
                 }
@@ -212,12 +202,12 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
              config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
-                    type: SchemaType.OBJECT,
+                    type: Type.OBJECT,
                     properties: {
-                        name: { type: SchemaType.STRING },
-                        description: { type: SchemaType.STRING },
-                        strength: { type: SchemaType.STRING },
-                        growthArea: { type: SchemaType.STRING }
+                        name: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        strength: { type: Type.STRING },
+                        growthArea: { type: Type.STRING }
                     }
                 }
             }
