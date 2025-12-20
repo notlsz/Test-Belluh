@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, Lock, Eye, EyeOff, Check, Circle, X } from 'lucide-react';
+import { Sparkles, ArrowRight, Lock, Eye, EyeOff, Check } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface AuthProps {

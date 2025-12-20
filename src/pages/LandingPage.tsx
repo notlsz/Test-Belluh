@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+// Added Heart icon to imports from lucide-react
 import { Sparkles, ArrowRight, Activity, TrendingUp, Lock, Fingerprint, Menu, X, Heart } from 'lucide-react';
 import { ORGANIZATIONS } from '../constants';
-
-interface LandingPageProps {
-  onGetStarted: () => void;
-  onLogin: () => void;
-  onShowLegal: (type: 'tos' | 'privacy') => void;
-  onGoToAbout: () => void;
-}
 
 const LogoMarquee = () => (
   <div className="w-full py-20 overflow-hidden relative z-20 bg-[#F8FDFF]/80 backdrop-blur-md border-y border-[#CDE9F2]">

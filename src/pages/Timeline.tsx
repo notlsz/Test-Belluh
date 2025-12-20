@@ -15,13 +15,12 @@ interface TimelineProps {
   onCircleChange: (circleId: string) => void;
   onLikeEntry: (id: string) => void;
   onCompose: (prompt?: string) => void;
-  onSearch: (query: string) => void; 
   onDeleteEntry: (id: string) => void;
   onUpdateEntry: (id: string, content: string) => void;
   streak: number;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onSearch: _onSearch, onDeleteEntry, onUpdateEntry, streak }) => {
+const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onDeleteEntry, onUpdateEntry, streak }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCircleMenuOpen, setIsCircleMenuOpen] = useState(false);
   const [todaysPrompt] = useState(DAILY_PROMPTS[0]); 

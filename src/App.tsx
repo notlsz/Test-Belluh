@@ -730,10 +730,6 @@ const App: React.FC = () => {
       setUser({...user, activeCircleId: circleId});
   };
 
-  const handleSearch = (query: string) => {
-      console.log("Searching for:", query);
-  };
-
   // --- Routing Logic ---
   
   if (isLoading) {
@@ -828,7 +824,6 @@ const App: React.FC = () => {
             onCircleChange={handleCircleChange}
             onLikeEntry={handleLikeEntry}
             onCompose={handleCompose}
-            onSearch={handleSearch}
             onDeleteEntry={handleDeleteEntry}
             onUpdateEntry={handleUpdateEntry}
             streak={streak}
@@ -850,7 +845,6 @@ const App: React.FC = () => {
             streak={streak}   // Pass streak for synchronization
             onCircleChange={handleCircleChange} 
             onCreateCircle={handleCreateCircle} // Pass create function
-            onTriggerPremium={handleTriggerPremium}
             onLogout={handleLogout}
             onUpdateUser={handleUpdateUser}
             onShowLegal={(type) => setLegalModalOpen(type)}
@@ -890,9 +884,7 @@ const App: React.FC = () => {
               </button>
               <Journal 
                   onAddEntry={handleAddEntry} 
-                  userName={user.name} 
                   partnerName={user.partnerName || 'Partner'} 
-                  partnerHasEntry={partnerHasEntry}
                   onTriggerPremium={handleTriggerPremium}
                   initialPrompt={composePrompt}
               />
