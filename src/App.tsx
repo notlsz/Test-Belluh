@@ -212,8 +212,8 @@ const App: React.FC = () => {
             newCircles.push({
                 id: 'c1',
                 name: circleName,
-                type: 'Couple' as any,
-                status: 'Active' as any,
+                type: CircleType.Couple as any,
+                status: CircleStatus.Active as any,
                 members: [sessionUser.id, partnerProfile.id],
                 themeColor: '#f0addd',
                 avatar: partnerProfile.avatar_url,
@@ -887,6 +887,8 @@ const App: React.FC = () => {
                   partnerName={user.partnerName || 'Partner'} 
                   onTriggerPremium={handleTriggerPremium}
                   initialPrompt={composePrompt}
+                  userName={user.name}
+                  partnerHasEntry={partnerHasEntry}
               />
           </div>
       )}

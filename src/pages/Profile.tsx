@@ -99,10 +99,12 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
   
+  // Profile Editing
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(user.name);
   const [editAvatar, setEditAvatar] = useState(user.avatar);
   
+  // Circles & Invites
   const [isCreatingCircle, setIsCreatingCircle] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -110,9 +112,13 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'searching' | 'sent' | 'not-found'>('idle');
   const [invitingCircleId, setInvitingCircleId] = useState<string | null>(null);
 
+  // Archive State
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+
+  // Drag and Drop State
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
+  // Bucket List State
   const [newGoal, setNewGoal] = useState('');
   const [isAddingGoal, setIsAddingGoal] = useState(false);
 
@@ -120,6 +126,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const activeCircles = user.circles.filter(c => c.status === CircleStatus.Active);
   const archivedCircles = user.circles.filter(c => c.status === CircleStatus.Archived);
 
+  // Stats
   const totalMemories = entries.length;
   const synergyScore = useMemo(() => {
       if (entries.length === 0) return 85; 
@@ -141,6 +148,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       return { text: "Needs Attention", color: "text-slate-600" };
   }, [synergyScore]);
 
+  // Fetch Notes and Goals
   useEffect(() => {
     if (!user.id) return;
 
@@ -402,12 +410,15 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
   return (
     <div className="pb-32 pt-10 px-0 max-w-4xl mx-auto min-h-screen bg-paper transition-all duration-300">
+      
+      {/* Header - Cleaned up */}
       <div className="px-6 flex justify-end items-center mb-8">
           <button onClick={() => setShowSettingsModal(true)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-soft hover:shadow-md transition-all border border-slate-50">
               <Settings size={20} />
           </button>
       </div>
 
+      {/* Tab Switcher - Pill Shaped */}
       <div className="px-6 mb-10 flex justify-center">
           <div className="bg-white border border-slate-100 p-1 rounded-full flex relative w-[180px] shadow-sm">
               <button 
@@ -433,6 +444,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           </div>
       </div>
 
+      {/* Pending Invites */}
       {pendingInvites && pendingInvites.length > 0 && (
           <div className="px-6 mb-8 animate-slide-up">
               <div className="bg-belluh-50 border border-belluh-200 rounded-2xl p-4">
@@ -471,6 +483,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
       {activeTab === 'us' ? (
           <div className="animate-fade-in space-y-12">
+              
               {activeCircle?.status === CircleStatus.Archived ? (
                   <div className="px-6">
                       <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
@@ -490,6 +503,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   </div>
               ) : (
                   <>
+                      {/* HERO: SHARED SOUL */}
                       <div className="flex flex-col items-center justify-center relative mb-8 px-6 pt-4">
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-[#f0addd]/20 via-purple-100/30 to-blue-100/20 rounded-full blur-[80px] pointer-events-none animate-pulse-slow"></div>
 
@@ -538,6 +552,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           </div>
                       </div>
 
+                      {/* PULSE SECTION */}
                       <div className="px-6 mb-16 animate-fade-in" style={{ animationDelay: '0.1s' }}>
                           <div className="text-center">
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Current Resonance</p>
@@ -548,6 +563,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           </div>
                       </div>
 
+                      {/* ARTIFACTS */}
                       <div className="px-6 max-w-2xl mx-auto space-y-12">
                           <div className="grid grid-cols-2 gap-4">
                               <div 
@@ -587,6 +603,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   </>
               )}
 
+               {/* Love Notes Wall */}
               <div className="px-6">
                   <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
@@ -662,6 +679,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   </div>
               </div>
 
+               {/* Shared Dreams */}
               <div className="px-6 pb-20">
                   <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
@@ -808,6 +826,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   )}
               </div>
 
+              {/* Circles */}
               <div className="mb-12">
                    <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-2">
