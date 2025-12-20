@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, LoveNote, Goal, CircleType, Circle, CircleStatus, JournalEntry, Mood } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Sparkles, Activity, Zap, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Sparkles, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface ProfileProps {
@@ -35,7 +35,7 @@ interface CircleCardProps {
   onInvite: (circleId: string) => void;
 }
 
-const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, user, onInvite }) => {
+const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onInvite }) => {
     const dotColor = circle.status === CircleStatus.Archived 
         ? 'bg-yellow-400' 
         : 'bg-[#f0addd]'; 
@@ -90,7 +90,7 @@ const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, user
     );
 };
 
-const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLogout, onCircleChange, onCreateCircle, onTriggerPremium, onUpdateUser, onShowLegal, onViewArtifact, onShowToast, pendingInvites = [], onAcceptInvite, onDeclineInvite }) => {
+const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLogout, onCircleChange, onCreateCircle, onUpdateUser, onShowLegal, onViewArtifact, onShowToast, pendingInvites = [], onAcceptInvite, onDeclineInvite }) => {
   const [activeTab, setActiveTab] = useState<'us' | 'me'>('us');
   const [activeCircleId, setActiveCircleId] = useState(user.activeCircleId);
   const [notes, setNotes] = useState<LoveNote[]>([]);

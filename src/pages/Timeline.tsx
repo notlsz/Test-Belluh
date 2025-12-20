@@ -1,9 +1,8 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
-import { JournalEntry, Circle, Insight, CircleStatus } from '../types';
+import { JournalEntry, Circle, Insight, CircleStatus, CircleType } from '../types';
 import EntryCard from '../components/EntryCard';
 import WeeklyReport from '../components/WeeklyReport';
-import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Activity, Zap, History, Lock, Waves, Quote, Archive, BookOpen, Star, BarChart3 } from 'lucide-react';
+import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History } from 'lucide-react';
 import { DAILY_PROMPTS } from '../constants';
 import { askBelluhAboutJournal, generateRelationshipSummary, detectPatterns } from '../services/geminiService';
 
@@ -22,7 +21,7 @@ interface TimelineProps {
   streak: number;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, onTriggerPremium, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onDeleteEntry, onUpdateEntry, streak }) => {
+const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, _onSearch, onDeleteEntry, onUpdateEntry, streak }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCircleMenuOpen, setIsCircleMenuOpen] = useState(false);
   const [todaysPrompt] = useState(DAILY_PROMPTS[0]); 
@@ -43,8 +42,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, onTriggerPr
   const isConstellation = activeCircleId === 'constellation';
   const activeCircle = isConstellation ? null : circles.find(c => c.id === activeCircleId);
   const isArchived = activeCircle?.status === CircleStatus.Archived;
-
-  const synergyScore = 94; // Could be dynamic based on patterns
 
   // Run detection logic
   useEffect(() => {
@@ -550,7 +547,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, onTriggerPr
               const sourceCircle = circles.find(c => c.id === entry.circleId);
 
               // Standard render for both User and Partner entries (flattened feed)
-              // This guarantees partner entries are visible if they exist in the list.
               return (
                   <div key={entry.id} className="relative pl-20 md:pl-24 pr-6 group transition-[padding] duration-300" style={{ animationDelay: `${index * 50}ms` }}>
                     <div className="absolute left-14 md:left-20 top-8 w-2 h-2 bg-white border-[2px] border-slate-200 rounded-full z-10 shadow-sm group-hover:border-belluh-300 group-hover:scale-110 transition-all duration-300 ring-4 ring-[#fcfcfc] -translate-x-[3.5px]"></div>

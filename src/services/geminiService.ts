@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { JournalEntry, Insight, RelationshipArchetype, UserPersona, ChatMessage, Mood } from "../types";
+import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../types";
 
 // Initialize Gemini with the API Key from environment variables (polyfilled by Vite)
 const apiKey = process.env.API_KEY || '';
@@ -165,7 +165,7 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
     }
 };
 
-export const chatWithBelluh = async (message: string, history: { role: 'user' | 'model', text: string }[], persona: UserPersona): Promise<string> => {
+export const chatWithBelluh = async (message: string, _history: { role: 'user' | 'model', text: string }[], persona: UserPersona): Promise<string> => {
      try {
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-2.5-flash',
