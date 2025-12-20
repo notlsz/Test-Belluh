@@ -15,26 +15,24 @@ interface TimelineProps {
   onCircleChange: (circleId: string) => void;
   onLikeEntry: (id: string) => void;
   onCompose: (prompt?: string) => void;
+  onSearch?: (query: string) => void; 
   onDeleteEntry: (id: string) => void;
   onUpdateEntry: (id: string, content: string) => void;
   streak: number;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onDeleteEntry, onUpdateEntry, streak }) => {
+const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onSearch: _onSearch, onDeleteEntry, onUpdateEntry, streak }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCircleMenuOpen, setIsCircleMenuOpen] = useState(false);
   const [todaysPrompt] = useState(DAILY_PROMPTS[0]); 
 
-  // AI States
   const [isSearching, setIsSearching] = useState(false);
   const [searchAnswer, setSearchAnswer] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summaryResult, setSummaryResult] = useState<string | null>(null);
   
-  // Report State
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
 
-  // Pattern Recognition States
   const [detectedPatterns, setDetectedPatterns] = useState<Insight[]>([]);
   const [selectedPattern, setSelectedPattern] = useState<Insight | null>(null);
 
@@ -42,7 +40,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   const activeCircle = isConstellation ? null : circles.find(c => c.id === activeCircleId);
   const isArchived = activeCircle?.status === CircleStatus.Archived;
 
-  // Run detection logic
   useEffect(() => {
     const runDetection = async () => {
         const patterns = await detectPatterns(entries);
@@ -77,12 +74,10 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   const groupedItems = useMemo(() => {
     const sorted = [...filteredEntries].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     
-    // Mix in patterns
     const items: (JournalEntry | { type: 'header', title: string } | { type: 'pattern', data: Insight })[] = [];
     const processedIds = new Set<string>();
     let lastMonthStr = '';
 
-    // Insert detected patterns at the top for visibility
     if (!searchQuery && sorted.length > 0 && !isArchived) {
         detectedPatterns.forEach(p => {
             items.push({ type: 'pattern', data: p });
@@ -142,11 +137,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   return (
     <div className="pb-32 pt-2 px-0 max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto min-h-screen bg-[#fcfcfc] font-sans selection:bg-belluh-200">
        
-       {/* 1. Header & OpenAI-Style Omni-bar */}
        <div className="sticky top-0 z-40 bg-[#fcfcfc]/90 backdrop-blur-xl transition-all border-b border-transparent">
           <div className="px-6 pt-6 pb-2 max-w-3xl mx-auto">
              
-             {/* Top Row: Context & Actions */}
              <div className="flex items-center justify-between mb-8">
                 <div className="relative">
                     <button 
@@ -188,7 +181,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                                     ))}
                                 </>
                             )}
-                            {/* Constellation Option */}
                             <div className="text-[10px] font-bold text-slate-400 px-3 py-2 mt-2 uppercase tracking-widest border-t border-slate-50">Universal</div>
                             <button className="w-full p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 text-left group" onClick={() => { onCircleChange('constellation'); setIsCircleMenuOpen(false); }}>
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${isConstellation ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-white border border-slate-200'}`}>
@@ -226,7 +218,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                 )}
              </div>
 
-             {/* Omni-bar */}
              <div className="relative w-full group mb-6">
                  <form 
                     onSubmit={handleSearchSubmit} 
@@ -266,7 +257,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                     )}
                  </form>
 
-                 {/* AI Answer Card */}
                  {searchAnswer && (
                      <div className="mt-4 animate-slide-up pb-2">
                          <div className="bg-white rounded-3xl p-8 shadow-2xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden">
@@ -292,7 +282,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
           </div>
        </div>
 
-       {/* Archived State Banner */}
        {isArchived && (
            <div className="max-w-3xl mx-auto px-6 mb-8 animate-fade-in">
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center gap-4 text-slate-500">
@@ -307,7 +296,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
            </div>
        )}
 
-       {/* Weekly Report Modal - Passed entries for sync */}
        {showWeeklyReport && (
            <WeeklyReport 
                onClose={() => setShowWeeklyReport(false)} 
@@ -319,11 +307,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
            />
        )}
 
-       {/* Summary Modal (Storybook Style) - MOBILE OPTIMIZED */}
        {summaryResult && (
            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/90 backdrop-blur-xl animate-fade-in" onClick={() => setSummaryResult(null)}>
                <div className="bg-white rounded-[2rem] w-full max-w-xl mx-4 md:mx-auto shadow-2xl shadow-slate-200/50 relative animate-scale-in border border-slate-100 ring-1 ring-black/5 flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-                   {/* Mobile-Friendly Close */}
                    <button onClick={() => setSummaryResult(null)} className="absolute top-4 right-4 z-20 p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors shadow-sm">
                        <X size={20} className="text-slate-400" />
                    </button>
@@ -342,7 +328,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                        </div>
                    </div>
 
-                   {/* Fixed Footer for Button */}
                    <div className="absolute bottom-0 left-0 right-0 p-6 pt-24 bg-gradient-to-t from-white via-white to-transparent flex justify-center z-10 pointer-events-none">
                         <button onClick={() => setSummaryResult(null)} className="pointer-events-auto px-8 py-3 bg-slate-900 text-white rounded-full font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-xl">
                             Close Story
@@ -352,11 +337,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
            </div>
        )}
        
-       {/* Pattern Detail Modal */}
        {selectedPattern && (
            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in" onClick={() => setSelectedPattern(null)}>
                <div className="bg-white rounded-[2rem] w-full max-w-lg mx-4 md:mx-auto shadow-2xl overflow-hidden animate-scale-in relative flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-                    {/* Floating Close Button - Always visible on top right */}
                     <button 
                         onClick={() => setSelectedPattern(null)} 
                         className="absolute top-4 right-4 z-30 p-2 bg-white/50 hover:bg-white rounded-full transition-colors text-slate-500 hover:text-slate-900 shadow-sm backdrop-blur-sm"
@@ -364,10 +347,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                         <X size={20} />
                     </button>
 
-                    {/* Scrollable Container */}
                     <div className="overflow-y-auto h-full flex flex-col">
-                        
-                        {/* Header Section - Background matches type */}
                         <div className={`p-6 md:p-8 relative shrink-0 ${selectedPattern.type === 'Spiral' ? 'bg-[#CDE9F2] text-cyan-950' : 'bg-belluh-50 text-slate-900'}`}>
                             {selectedPattern.type === 'Spiral' && <div className="absolute top-0 right-0 w-64 h-64 bg-white/40 rounded-full blur-[80px] pointer-events-none"></div>}
                             
@@ -387,7 +367,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                             </h2>
                         </div>
 
-                        {/* Body Content */}
                         <div className="p-6 md:p-8 bg-white flex-1">
                             <div className="mb-8">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">The Evidence</h4>
@@ -430,10 +409,8 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
        )}
 
        <div className="relative min-h-[400px]">
-          {/* Timeline Stem */}
           <div className="absolute left-14 md:left-20 top-0 bottom-0 w-px bg-slate-100"></div>
 
-          {/* 2. Stats Dashboard (Collapsed) */}
           {!searchQuery && !searchAnswer && !isArchived && !isConstellation && (
               <div className="relative pl-20 md:pl-24 pr-6 mb-12 animate-slide-up pt-4">
                   <div className="absolute left-14 md:left-20 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-slate-200 rounded-full z-10 -translate-x-[2.5px] ring-4 ring-[#fcfcfc]"></div>
@@ -446,7 +423,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
               </div>
           )}
 
-          {/* 3. Daily Ritual - Hidden in Constellation */}
           {!hasUserPostedToday && !searchQuery && !searchAnswer && !isArchived && !isConstellation && (
               <div className="relative pl-20 md:pl-24 pr-6 mb-16 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                   <div className="absolute left-14 md:left-20 top-8 w-2 h-2 bg-belluh-300 border-[2px] border-[#fcfcfc] rounded-full z-10 shadow-glow -translate-x-[3.5px]"></div>
@@ -471,9 +447,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
               </div>
           )}
 
-          {/* 4. Timeline Feed with Patterns */}
           {groupedItems.map((item, index) => {
-              // Header
               if ('type' in item && item.type === 'header') {
                   return (
                       <div key={`header-${index}`} className="relative pl-20 md:pl-24 pr-6 mb-6 mt-6 animate-fade-in">
@@ -483,7 +457,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                   );
               }
 
-              // Pattern / Spiral Card (The "Kafka" Feature)
               if ('type' in item && item.type === 'pattern') {
                   const pattern = item.data as Insight;
                   const isSpiral = pattern.type === 'Spiral';
@@ -496,8 +469,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                             onClick={() => setSelectedPattern(pattern)}
                             className={`max-w-xl w-full rounded-[2rem] p-8 shadow-xl relative overflow-hidden group cursor-pointer hover:scale-[1.01] transition-transform ${isSpiral ? 'bg-[#CDE9F2] text-cyan-950' : 'bg-white border border-belluh-100'}`}
                         >
-                             
-                             {/* Abstract Background Art */}
                              {isSpiral && (
                                  <div className="absolute -right-20 -top-20 w-60 h-60 bg-white/40 rounded-full blur-[80px]"></div>
                              )}
@@ -541,11 +512,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                   )
               }
 
-              // Standard Entry
               const entry = item as JournalEntry;
               const sourceCircle = circles.find(c => c.id === entry.circleId);
 
-              // Standard render for both User and Partner entries (flattened feed)
               return (
                   <div key={entry.id} className="relative pl-20 md:pl-24 pr-6 group transition-[padding] duration-300" style={{ animationDelay: `${index * 50}ms` }}>
                     <div className="absolute left-14 md:left-20 top-8 w-2 h-2 bg-white border-[2px] border-slate-200 rounded-full z-10 shadow-sm group-hover:border-belluh-300 group-hover:scale-110 transition-all duration-300 ring-4 ring-[#fcfcfc] -translate-x-[3.5px]"></div>

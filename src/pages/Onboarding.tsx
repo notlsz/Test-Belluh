@@ -12,11 +12,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [entry, setEntry] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Invite State
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'searching' | 'sent' | 'error' | 'not-found'>('idle');
 
-  // Auto-advance step 0
   useEffect(() => {
     if (step === 0) {
       const timer = setTimeout(() => setStep(1), 3500); 
@@ -46,8 +44,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("No user");
 
-          // 1. Look up profile by email (RLS allows this)
-          // Uses .ilike for case-insensitive email matching
           const { data: profiles } = await supabase
               .from('profiles')
               .select('id')
@@ -65,15 +61,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               return;
           }
 
-          // 2. Insert Pending Connection
           const { error } = await supabase.from('partner_connections').insert({
               user_id: user.id,
               partner_id: partnerId,
-              status: 'pending' // In-app invite only
+              status: 'pending'
           });
 
           if (error) {
-              // likely duplicate key or similar; log but proceed
               console.error(error);
           }
           
@@ -92,7 +86,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div className="min-h-screen bg-paper flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      {/* Step 0: Welcome & Trust */}
       {step === 0 && (
         <div className="text-center animate-fade-in max-w-lg mx-auto">
           <div className="w-24 h-24 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-8 shadow-float">
@@ -119,7 +112,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Step 1: Partner Name */}
       {step === 1 && (
         <form onSubmit={handlePartnerNameSubmit} className="w-full max-w-md animate-slide-up">
            <label className="block text-xs font-bold text-belluh-400 uppercase tracking-widest mb-6 text-center">Let's begin</label>
@@ -143,7 +135,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </form>
       )}
 
-      {/* Step 2: Magic Prompt */}
       {step === 2 && (
         <form onSubmit={handleEntrySubmit} className="w-full max-w-md animate-slide-up">
             <div className="flex items-center justify-center gap-2 mb-6 opacity-60">
@@ -181,11 +172,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </form>
       )}
 
-      {/* Step 3: The Aha Moment */}
       {step === 3 && (
         <div className="w-full max-w-md animate-scale-in text-center">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-slate-50 relative overflow-hidden">
-                {/* AI Glow Background */}
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-100 rounded-full blur-3xl opacity-50"></div>
                 <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-belluh-100 rounded-full blur-3xl opacity-50"></div>
                 
@@ -214,7 +203,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Step 4: Simple Invite (New) */}
       {step === 4 && (
         <div className="w-full max-w-md animate-slide-up">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 text-center relative overflow-hidden">

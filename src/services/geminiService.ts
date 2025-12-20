@@ -21,11 +21,9 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
     const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429") || error?.message?.includes("quota");
     
     if (retries > 0) {
-      // If it's a rate limit, start with a longer delay and back off more aggressively
       const waitTime = isRateLimit ? delay * 2 : delay;
       console.warn(`Retrying operation... Attempts left: ${retries}. Waiting ${waitTime}ms. Error: ${error?.message}`);
       await new Promise(r => setTimeout(r, waitTime));
-      // Increase delay for next attempt (exponential backoff)
       return retryOperation(operation, retries - 1, waitTime * 1.5); 
     }
     throw error;
@@ -54,13 +52,11 @@ export const generateFutureLetter = async (entries: JournalEntry[], userName: st
             Entries to analyze: ${context}
         `;
 
-        // Use gemini-3-flash-preview for general text tasks as per instructions
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: prompt,
         }));
 
-        // Access .text property (not a method) as per SDK instructions
         let text = response.text || "Letter unavailable.";
         text = text.replace(/\*\*/g, '').replace(/\*/g, ''); // Remove all asterisks
         return text;
@@ -71,7 +67,6 @@ export const generateFutureLetter = async (entries: JournalEntry[], userName: st
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
     try {
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: {
@@ -90,7 +85,6 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
 export const askBelluhAboutJournal = async (query: string, entries: JournalEntry[]): Promise<string> => {
     try {
         const context = entries.map(e => `[${e.timestamp.toLocaleDateString()}] ${e.authorName}: ${e.content}`).join('\n');
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `You are Belluh, an AI relationship coach. Answer the user's question based on their journal entries.
@@ -111,7 +105,6 @@ export const askBelluhAboutJournal = async (query: string, entries: JournalEntry
 export const generateRelationshipSummary = async (entries: JournalEntry[]): Promise<string> => {
     try {
         const context = entries.slice(0, 50).map(e => e.content).join('\n');
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Summarize the key themes, emotional trajectory, and growth of this relationship based on these entries. Be insightful and poetic.
@@ -128,7 +121,6 @@ export const generateRelationshipSummary = async (entries: JournalEntry[]): Prom
 export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]> => {
     try {
         const context = entries.slice(0, 20).map(e => `[${e.id}] ${e.content}`).join('\n');
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Analyze these entries for relationship patterns. Return a JSON array of insights.
@@ -167,7 +159,6 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
 
 export const chatWithBelluh = async (message: string, _history: { role: 'user' | 'model', text: string }[], persona: UserPersona): Promise<string> => {
      try {
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `You are Belluh, an AI relationship coach.
@@ -175,14 +166,13 @@ export const chatWithBelluh = async (message: string, _history: { role: 'user' |
             User: ${message}`
         }));
         return response.text || "I'm listening.";
-     } catch (e) {
-         return handleGeminiError(e, "I'm having trouble connecting to Belluh.");
+     } catch (error) {
+         return handleGeminiError(error, "I'm having trouble connecting to Belluh.");
      }
-}
+};
 
 export const generateDailyReflection = async (entryTexts: string[], persona: UserPersona): Promise<string> => {
      try {
-         // Use gemini-3-flash-preview for general text tasks
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
              contents: `Generate a short daily reflection based on these entries.
@@ -191,19 +181,18 @@ export const generateDailyReflection = async (entryTexts: string[], persona: Use
          }));
          return response.text || "Reflecting...";
      } catch (e) {
-         return "Reflecting on your journey..."; // Fallback text
+         return "Reflecting on your journey...";
      }
-}
+};
 
 export const getRelationshipArchetype = async (entryTexts: string[]): Promise<RelationshipArchetype> => {
     try {
-        // Use gemini-3-flash-preview for general text tasks
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `Analyze these entries and determine the relationship archetype.
             Entries: ${entryTexts.slice(0, 10).join('\n')}`,
              config: {
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
@@ -220,11 +209,10 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
     } catch (e) {
         return { name: "The Builders", description: "Building a life.", strength: "Consistency", growthArea: "Spontaneity" };
     }
-}
+};
 
 export const softenConflictMessage = async (text: string): Promise<string> => {
      try {
-         // Use gemini-3-flash-preview for general text tasks
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
              contents: `Rewrite this message to be softer and more compassionate, while keeping the core meaning.
@@ -232,13 +220,12 @@ export const softenConflictMessage = async (text: string): Promise<string> => {
          }));
          return response.text || text;
      } catch (e) {
-         return text; // Return original text on fail
+         return text;
      }
-}
+};
 
 export const detectPersonaFromEntries = async (entries: any[]): Promise<UserPersona> => {
      try {
-         // Use gemini-3-flash-preview for general text tasks
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
              contents: `Analyze the writing style of these entries and match it to one of these personas: Kafka, Hemingway, Nietzsche, Fitzgerald, Camus, Woolf. Return only the persona name.
@@ -252,4 +239,4 @@ export const detectPersonaFromEntries = async (entries: any[]): Promise<UserPers
      } catch (e) {
          return UserPersona.Woolf;
      }
-}
+};

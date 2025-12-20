@@ -9,6 +9,8 @@ interface JournalProps {
   partnerName: string;
   onTriggerPremium: () => void;
   initialPrompt?: string;
+  userName?: string;
+  partnerHasEntry?: boolean;
 }
 
 const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPremium, initialPrompt }) => {
@@ -49,7 +51,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // Transcribe
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = async () => {
@@ -75,7 +76,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      // Stop all tracks
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
@@ -137,10 +137,8 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
           onChange={handleFileSelect}
       />
       
-      {/* Dynamic Background */}
       <div className="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] bg-belluh-300/10 rounded-full blur-[100px] pointer-events-none"></div>
       
-      {/* Success State */}
       {step === 'success' ? (
         <div className="flex-1 flex flex-col items-center justify-center animate-scale-in">
            <div className="relative mb-8">
@@ -158,9 +156,7 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
         </div>
       ) : (
         <>
-            {/* Input Card */}
             <div className="relative flex-1 flex flex-col">
-                {/* Step 1: Write */}
                 <div className={`transition-all duration-500 flex-1 flex flex-col ${step === 'write' ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-95 pointer-events-none absolute inset-0'}`}>
                     
                     <div className="mb-8 mt-4">
@@ -168,7 +164,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
                         <p className="text-2xl text-slate-800 font-serif leading-tight">{dailyPrompt}</p>
                     </div>
 
-                    {/* Media Previews */}
                     <div className="space-y-4 mb-4">
                         {hasImage && imagePreview && (
                             <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-sm animate-scale-in group">
@@ -211,7 +206,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
                         </div>
                     )}
 
-                    {/* Toolbar */}
                     <div className="mt-auto pt-6 flex items-center justify-between">
                         <div className="flex gap-2">
                              <button 
@@ -250,7 +244,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
                     </div>
                 </div>
 
-                {/* Step 2: Mood & Details */}
                 <div className={`transition-all duration-500 flex flex-col h-full ${step === 'mood' ? 'opacity-100 scale-100 z-10' : 'opacity-0 translate-x-10 pointer-events-none absolute inset-0'}`}>
                      <div className="flex justify-between items-center mb-10">
                         <h3 className="text-slate-800 font-serif text-2xl">How did this feel?</h3>
