@@ -11,7 +11,7 @@ import About from './pages/About';
 import LegalModal from './components/LegalModal';
 import ArtifactModal from './components/ArtifactModal';
 import { CURRENT_USER, MOCK_INSIGHTS } from './constants';
-import { JournalEntry, EntryType, Mood, User, Circle, CircleType, CircleStatus } from './types';
+import { JournalEntry, EntryType, Mood, User, CircleType, CircleStatus } from './types';
 import { Sparkles, X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 
@@ -201,7 +201,7 @@ const App: React.FC = () => {
             .order('created_at', { ascending: false });
 
         // 5. Build Circles
-        const newCircles: Circle[] = [];
+        const newCircles: any[] = [];
         const myFirstName = profile?.full_name?.trim().split(' ')[0] || 'Me';
         
         // Couple Circle (Default / Primary)
@@ -223,8 +223,8 @@ const App: React.FC = () => {
              newCircles.push({
                 id: 'c1',
                 name: `${myFirstName}'s Space`,
-                type: 'Custom' as any,
-                status: 'Active' as any,
+                type: CircleType.Custom as any,
+                status: CircleStatus.Active as any,
                 members: [sessionUser.id],
                 themeColor: '#cbd5e1'
              });
@@ -582,7 +582,7 @@ const App: React.FC = () => {
       }]).select().single();
 
       if (data && !error) {
-          const newCircle: Circle = {
+          const newCircle: any = {
               id: data.id,
               name: name,
               type: CircleType.Custom,

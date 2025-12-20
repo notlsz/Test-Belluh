@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, LoveNote, Goal, CircleType, Circle, CircleStatus, JournalEntry, Mood } from '../types';
+import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood } from '../types';
 import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -72,7 +72,7 @@ const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onIn
         <div className="relative z-10">
             <h4 className={`font-bold text-lg leading-tight mb-1 truncate transition-colors ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>{circle.name}</h4>
             <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{circle.type}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{(circle.type as any)}</span>
                 {circle.status === CircleStatus.Archived && <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded ml-1">Archived</span>}
             </div>
         </div>
@@ -1055,7 +1055,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                 <LogOut size={16} />
                             </button>
 
-                            {activeCircle?.status === CircleStatus.Active && activeCircle.type === CircleType.Couple && (
+                            {activeCircle?.status === CircleStatus.Active && (activeCircle.type as any) === 'Couple' && (
                                 <button 
                                     onClick={() => setShowArchiveConfirm(true)}
                                     className="w-full py-4 text-left px-2 flex items-center justify-between text-rose-500 hover:bg-rose-50 rounded-xl transition-colors mt-2 border-t border-slate-50"

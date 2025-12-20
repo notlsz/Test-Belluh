@@ -27,6 +27,7 @@ const LogoMarquee = () => (
                src={org.logo || `https://logo.clearbit.com/${org.domain}`} 
                alt={org.name} 
                onError={(e) => {
+                   // Fallback to clearbit if custom logo fails, or hide if both fail
                    const target = e.currentTarget;
                    if (target.src.includes('clearbit')) {
                        target.style.display = 'none';
@@ -71,6 +72,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Lock body scroll when menu is open
   useEffect(() => {
       if (isMenuOpen) {
           document.body.style.overflow = 'hidden';
@@ -101,12 +103,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-slate-900 font-sans selection:bg-[#f0addd] selection:text-white overflow-x-hidden relative">
+      
+      {/* --- Ambient Cloud Background Layers --- */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[#CDE9F2]/30 rounded-full blur-[120px] animate-float opacity-60"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[#f0addd]/20 rounded-full blur-[130px] animate-pulse-slow opacity-50"></div>
           <div className="absolute top-[40%] left-[30%] w-[40vw] h-[40vw] bg-white rounded-full blur-[80px] animate-breathing opacity-80 mix-blend-overlay"></div>
       </div>
 
+      {/* Floating Pill Navbar - Scroll Aware */}
       <div className={`fixed top-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-50 transition-all duration-500 transform ${isNavVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
         <nav className="bg-white/80 backdrop-blur-xl rounded-full shadow-lg shadow-slate-200/50 border border-white px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -122,6 +127,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
         </nav>
       </div>
 
+      {/* Full Screen Menu Overlay - Clean Design */}
       <div className={`fixed inset-0 z-[100] bg-white transition-all duration-700 ease-[cubic-bezier(0.32,0.725,0,1)] ${isMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
           <div className="flex flex-col h-full p-6 md:p-12 relative max-w-7xl mx-auto w-full">
                <div className="flex justify-between items-center mb-12">
@@ -166,6 +172,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
           </div>
       </div>
 
+      {/* Hero Section */}
       <section className="relative z-10 pt-44 pb-20 md:pt-56 md:pb-32 px-6">
          <div className="max-w-4xl mx-auto text-center animate-slide-up">
              
@@ -200,8 +207,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
          </div>
       </section>
 
+      {/* Marquee Section */}
       <LogoMarquee />
 
+      {/* Visual Demo Section */}
       <section className="relative z-10 px-6 pb-24 pt-32">
           <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
@@ -214,6 +223,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[600px]">
+                  
+                  {/* Card 1: The AI Analysis */}
                   <div className="md:col-span-8 bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] flex flex-col justify-between relative overflow-hidden group hover:scale-[1.005] transition-all duration-700 min-h-[400px]">
                       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-[#CDE9F2]/30 to-transparent rounded-bl-full opacity-50 pointer-events-none"></div>
                       
@@ -245,8 +256,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                       </div>
                   </div>
 
+                  {/* Right Column Stack */}
                   <div className="md:col-span-4 flex flex-col gap-6">
+                      
+                      {/* Card 2: The Metric */}
                       <div className="flex-1 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] flex flex-col justify-between relative overflow-hidden group hover:scale-[1.01] transition-transform duration-500 min-h-[250px]">
+                          
                           <div className="relative z-10 flex justify-between items-start">
                               <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Synergy Score</span>
                               <div className="px-3 py-1 bg-[#f0addd]/10 text-[#c06ba5] rounded-full text-[10px] font-bold flex items-center gap-1">
@@ -269,14 +284,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                               <p className="text-sm text-slate-500 mt-1 font-medium">Exceptional Harmony</p>
                           </div>
                       </div>
+
                   </div>
               </div>
           </div>
       </section>
 
+      {/* Visual Demo Section - Apple Style Immersive Cards */}
       <section id="features" className="relative z-10 py-32 px-6 bg-slate-50/50">
         <div className="max-w-7xl mx-auto space-y-32">
+            
+            {/* Feature 1: Intelligence - The "Hero" Feature */}
             <div className="group relative bg-white rounded-[3rem] p-8 md:p-20 shadow-2xl shadow-slate-200/50 border border-white overflow-hidden transition-transform duration-700 hover:scale-[1.01]">
+                {/* Subtle Theme Glow */}
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-b from-[#f0addd]/20 to-transparent rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                 
                 <div className="relative z-10 md:w-2/3">
@@ -292,6 +312,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                     </p>
                 </div>
                 
+                {/* Visual: Simulated Interface */}
                 <div className="mt-16 md:absolute md:top-1/2 md:right-20 md:-translate-y-1/2 md:w-96">
                      <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-6 rounded-3xl shadow-apple transform rotate-3 transition-transform duration-700 group-hover:rotate-0 group-hover:scale-105">
                           <div className="flex items-center gap-3 mb-4">
@@ -305,7 +326,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                 </div>
             </div>
 
+            {/* Feature 2: Privacy - Light Blue Cloud Theme */}
             <div className="group relative bg-[#CDE9F2] rounded-[3rem] p-8 md:p-20 shadow-2xl overflow-hidden text-slate-900 transition-transform duration-700 hover:scale-[1.01]">
+                 {/* Cloud Animations - Background */}
                  <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-white/40 rounded-full blur-[80px] pointer-events-none animate-float"></div>
                  <div className="absolute bottom-[-10%] left-[-20%] w-[500px] h-[500px] bg-white/30 rounded-full blur-[60px] pointer-events-none animate-pulse-slow"></div>
 
@@ -325,16 +348,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                      
                      <div className="relative w-80 h-80 flex items-center justify-center">
                           <div className="relative animate-float">
+                                {/* Glow */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-white/50 blur-[70px] rounded-full"></div>
+                                
+                                {/* Cloud Body */}
                                 <div className="relative z-10 filter drop-shadow-[0_15px_35px_rgba(50,120,160,0.15)]">
                                     <div className="relative w-72 h-56">
+                                        {/* Layer 1: Base Puffs */}
                                         <div className="absolute bottom-0 left-4 w-32 h-32 bg-white rounded-full"></div>
                                         <div className="absolute bottom-2 right-4 w-36 h-36 bg-white rounded-full"></div>
+                                        
+                                        {/* Layer 2: Top Puffs */}
                                         <div className="absolute bottom-12 left-16 w-40 h-40 bg-white rounded-full"></div>
                                         <div className="absolute bottom-8 right-24 w-28 h-28 bg-white rounded-full"></div>
+
+                                        {/* Layer 3: Soften Edges */}
                                         <div className="absolute bottom-4 left-10 w-52 h-20 bg-white blur-lg rounded-full"></div>
                                     </div>
                                 </div>
+                                
+                                {/* Aesthetic Sparkles */}
                                 <Sparkles className="absolute -top-4 right-10 text-white w-8 h-8 animate-pulse fill-white/60 drop-shadow-sm" />
                                 <Sparkles className="absolute bottom-10 -left-6 text-white w-5 h-5 animate-pulse delay-700 fill-white/60 drop-shadow-sm" />
                           </div>
@@ -342,7 +375,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                  </div>
             </div>
 
+            {/* Feature 3: Adaptive Persona */}
             <div className="w-full">
+                 {/* Card A: Adaptation */}
                  <div className="bg-[#fcfcfc] rounded-[3rem] p-10 md:p-16 border border-slate-100 shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
                       <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#f0addd]/20 to-transparent rounded-bl-full opacity-0 transition-opacity group-hover:opacity-100 duration-700"></div>
                       
@@ -361,9 +396,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                       </div>
                  </div>
             </div>
+
         </div>
       </section>
 
+      {/* Infinite Marquee Section */}
       <section id="stories" className="relative z-10 py-24 overflow-hidden bg-white/50 backdrop-blur-sm border-t border-slate-50">
         <div className="max-w-7xl mx-auto px-6 mb-16 text-center">
             <h2 className="text-4xl md:text-6xl font-serif font-semibold text-slate-900 mb-6 tracking-tighter">Every moment counts.</h2>

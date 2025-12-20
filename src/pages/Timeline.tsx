@@ -412,7 +412,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                             <div className="bg-belluh-50/50 p-5 md:p-6 rounded-2xl border border-belluh-100 flex items-start gap-4 mb-4">
                                 <Sparkles size={20} className="text-belluh-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-900 mb-1">Belluh's Advice</h4>
+                                    <h4 className="font-bold text-slate-900 mb-1">Belluh's Advice</h4>
                                     <p className="text-sm text-slate-600 leading-relaxed">
                                         {selectedPattern.type === 'Spiral' 
                                             ? "This pattern often appears when you feel disconnected. Try sharing a small, vulnerable truth with your partner today instead of withdrawing." 
