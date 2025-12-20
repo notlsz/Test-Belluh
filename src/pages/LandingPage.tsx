@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, ArrowRight, Activity, TrendingUp, Lock, Fingerprint, Menu, X, Image as ImageIcon, Heart } from 'lucide-react';
+import { Sparkles, ArrowRight, Activity, TrendingUp, Lock, Fingerprint, Menu, X, Heart } from 'lucide-react';
 import { ORGANIZATIONS } from '../constants';
 
 interface LandingPageProps {

@@ -1,20 +1,17 @@
-
 import React, { useState, useRef } from 'react';
 import { EntryType, Mood } from '../types';
 import { DAILY_PROMPTS, MOOD_EMOJIS } from '../constants';
-import { Mic, Image as ImageIcon, Send, X, Heart, Loader2, Music, CheckCircle2, Lock, Globe, StopCircle } from 'lucide-react';
+import { Mic, Image as ImageIcon, Send, X, Loader2, Music, CheckCircle2, Lock, Globe } from 'lucide-react';
 import { transcribeAudio } from '../services/geminiService';
 
 interface JournalProps {
   onAddEntry: (content: string, mood: Mood | undefined, type: EntryType, prompt?: string, isPrivate?: boolean, audioUrl?: string, mediaUrl?: string) => void;
-  userName: string;
   partnerName: string;
-  partnerHasEntry?: boolean;
   onTriggerPremium: () => void;
   initialPrompt?: string;
 }
 
-const Journal: React.FC<JournalProps> = ({ onAddEntry, userName, partnerName, partnerHasEntry = false, onTriggerPremium, initialPrompt }) => {
+const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPremium, initialPrompt }) => {
   const [content, setContent] = useState('');
   const [selectedMood, setSelectedMood] = useState<Mood | undefined>(undefined);
   const [dailyPrompt] = useState(initialPrompt || DAILY_PROMPTS[Math.floor(Math.random() * DAILY_PROMPTS.length)]);
@@ -31,9 +28,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, userName, partnerName, pa
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const handleNext = () => {
       if(content.trim() || hasImage || audioUrl) setStep('mood');
@@ -54,8 +48,6 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, userName, partnerName, pa
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
         
         // Transcribe
         const reader = new FileReader();
@@ -67,6 +59,7 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, userName, partnerName, pa
                 const text = await transcribeAudio(base64Audio, 'audio/webm');
                 setContent(prev => prev + (prev ? ' ' : '') + text);
                 setIsTranscribing(false);
+                setAudioUrl(URL.createObjectURL(audioBlob));
             }
         };
       };
@@ -118,32 +111,8 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, userName, partnerName, pa
 
   const handleDeleteAudio = () => {
       setAudioUrl(null);
-      // We don't clear content as user might have edited the transcription
   }
 
-  const handleSubmit = () => {
-    if (!content.trim() && !hasImage && !audioUrl) return;
-    
-    // If we have audio, we treat it as Voice type unless there's an image, 
-    // but the system supports mixed. We'll default to Voice if audio is present.
-    let entryType = audioUrl ? EntryType.Voice : EntryType.Prompt;
-    if (hasImage && !audioUrl) entryType = EntryType.Photo;
-    
-    // Pass imagePreview directly as the mediaUrl (it's a base64 string)
-    // In a real app, you would upload this to storage and pass the URL
-    // We update the call to include mediaUrl
-    onAddEntry(
-        content + (hasImage ? ' [Image Attached]' : ''), 
-        selectedMood, 
-        entryType, 
-        dailyPrompt, 
-        isPrivate, 
-        audioUrl || undefined,
-        imagePreview || undefined
-    );
-  };
-  
-  // Custom submit handler to pass the image
   const handleFinalSubmit = () => {
        onAddEntry(
            content, 

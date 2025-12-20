@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, LoveNote, Goal, CircleType, Circle, CircleStatus, JournalEntry, Mood } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Sparkles, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface ProfileProps {
@@ -10,7 +10,6 @@ interface ProfileProps {
   onLogout?: () => void;
   onCircleChange: (circleId: string) => void;
   onCreateCircle?: (name: string) => void; 
-  onTriggerPremium: () => void;
   onUpdateUser: (updates: Partial<User>) => void;
   onShowLegal: (type: 'tos' | 'privacy') => void;
   onViewArtifact: (type: 'reel' | 'letter') => void;

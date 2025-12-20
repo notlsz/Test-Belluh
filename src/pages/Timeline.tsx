@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { JournalEntry, Circle, Insight, CircleStatus, CircleType } from '../types';
+import { JournalEntry, Circle, Insight, CircleStatus } from '../types';
 import EntryCard from '../components/EntryCard';
 import WeeklyReport from '../components/WeeklyReport';
 import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History } from 'lucide-react';
@@ -21,7 +21,7 @@ interface TimelineProps {
   streak: number;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, _onSearch, onDeleteEntry, onUpdateEntry, streak }) => {
+const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircleId, circles, onCircleChange, onLikeEntry, onCompose, onSearch: _onSearch, onDeleteEntry, onUpdateEntry, streak }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCircleMenuOpen, setIsCircleMenuOpen] = useState(false);
   const [todaysPrompt] = useState(DAILY_PROMPTS[0]); 

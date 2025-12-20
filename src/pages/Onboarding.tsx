@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Lock, ArrowRight, Check, Heart, Mail, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Lock, ArrowRight, Heart, Mail, UserPlus, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface OnboardingProps {
@@ -258,7 +258,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         )}
 
                         <button 
-                            type="submit"
+                            type="submit" 
                             disabled={inviteStatus === 'searching'}
                             className="w-full bg-[#f0addd] text-white py-4 rounded-xl font-bold hover:bg-belluh-400 transition-all shadow-lg active:scale-95 disabled:opacity-70"
                         >
