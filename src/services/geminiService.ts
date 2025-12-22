@@ -4,25 +4,20 @@ import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../ty
 // Always initialize with process.env.API_KEY directly as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Helper to handle errors
+// Helper to handle errors gracefully
 const handleGeminiError = (error: any, fallback: any) => {
   console.error("Gemini API Error:", error);
-  if (error?.status === 429 || error?.code === 429 || error?.message?.includes("429") || error?.message?.includes("quota")) {
-      console.warn("Rate limit exceeded. Returning fallback to prevent crash.");
-  }
   return fallback;
 };
 
-// Retry helper with exponential backoff
+// Retry helper with exponential backoff for rate limits
 async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
   try {
     return await operation();
   } catch (error: any) {
-    const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429") || error?.message?.includes("quota");
-    
+    const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429");
     if (retries > 0) {
       const waitTime = isRateLimit ? delay * 2 : delay;
-      console.warn(`Retrying operation... Attempts left: ${retries}. Waiting ${waitTime}ms. Error: ${error?.message}`);
       await new Promise(r => setTimeout(r, waitTime));
       return retryOperation(operation, retries - 1, waitTime * 1.5); 
     }
@@ -31,37 +26,16 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
 }
 
 export const generateFutureLetter = async (entries: JournalEntry[], userName: string, partnerName: string): Promise<string> => {
-    const context = entries.slice(0, 30).map(e => e.content).join('\n');
+    const context = entries.slice(0, 20).map(e => e.content).join('\n');
     try {
-        const prompt = `
-            Write a letter from "Future ${userName} & ${partnerName}" (5 years from now) to "Current ${userName} & ${partnerName}".
-            Based on our journal entries, predict what we overcame and how we grew closer.
-            
-            TONE: Deeply personal, genuine, authentic, and emotional. Avoid sounding like a corporate AI. Use a literary, novel-like style.
-            
-            CRITICAL FORMATTING RULES:
-            1. DO NOT use asterisks (*) for bolding or italics. Use plain text only.
-            2. DO NOT use markdown headers (#).
-            3. Use frequent paragraph breaks to create a spacious, poetic reading experience.
-            4. Sign it exactly as:
-            "With endless love,
-            ${userName} & ${partnerName}
-            December 2030"
-            
-            Names: ${userName} and ${partnerName}
-            Entries to analyze: ${context}
-        `;
-
+        const prompt = `Write a poetic letter from 'Future ${userName} & ${partnerName}' (5 years from now) based on these entries:\n${context}`;
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: prompt,
         }));
-
-        let text = response.text || "Letter unavailable.";
-        text = text.replace(/\*\*/g, '').replace(/\*/g, ''); // Remove all asterisks
-        return text;
+        return response.text || "The future is bright.";
     } catch (e) {
-        return handleGeminiError(e, `Dear ${userName} & ${partnerName},\n\nThe future is unwritten, but it looks bright. Keep going.\n\nLove,\nUs (2030)`);
+        return handleGeminiError(e, "A letter to your future self...");
     }
 };
 
@@ -72,7 +46,7 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
             contents: {
                 parts: [
                     { inlineData: { mimeType, data: base64Audio } },
-                    { text: "Transcribe this audio accurately. Only return the transcription text." }
+                    { text: "Transcribe this audio accurately. Only return the text." }
                 ]
             }
         }));
@@ -84,47 +58,36 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
 
 export const askBelluhAboutJournal = async (query: string, entries: JournalEntry[]): Promise<string> => {
     try {
-        const context = entries.map(e => `[${e.timestamp.toLocaleDateString()}] ${e.authorName}: ${e.content}`).join('\n');
+        const context = entries.slice(0, 30).map(e => `[${e.authorName}]: ${e.content}`).join('\n');
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `You are Belluh, an AI relationship coach. Answer the user's question based on their journal entries.
-            
-            Journal Context:
-            ${context}
-            
-            User Question: ${query}
-            
-            Answer:`
+            contents: `Context:\n${context}\n\nQuestion: ${query}`
         }));
-        return response.text || "I couldn't find an answer in your journal.";
+        return response.text || "I'm not sure, but your bond seems strong.";
     } catch (e) {
-        return handleGeminiError(e, "I'm having trouble accessing your memories right now.");
+        return handleGeminiError(e, "I'm listening...");
     }
 };
 
 export const generateRelationshipSummary = async (entries: JournalEntry[]): Promise<string> => {
     try {
-        const context = entries.slice(0, 50).map(e => e.content).join('\n');
+        const context = entries.slice(0, 20).map(e => e.content).join('\n');
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Summarize the key themes, emotional trajectory, and growth of this relationship based on these entries. Be insightful and poetic.
-            
-            Entries:
-            ${context}`
+            contents: `Summarize the growth of this relationship:\n${context}`
         }));
-        return response.text || "Summary unavailable.";
+        return response.text || "You are growing together.";
     } catch (e) {
-        return handleGeminiError(e, "Could not generate summary.");
+        return handleGeminiError(e, "A summary of your journey...");
     }
 };
 
 export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]> => {
     try {
-        const context = entries.slice(0, 20).map(e => `[${e.id}] ${e.content}`).join('\n');
+        const context = entries.slice(0, 15).map(e => e.content).join('\n');
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Analyze these entries for relationship patterns. Return a JSON array of insights.
-            Entries: ${context}`,
+            contents: `Identify patterns in these entries. Return as JSON array of objects with id, title, content, and type.`,
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -135,39 +98,27 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
                             id: { type: Type.STRING },
                             title: { type: Type.STRING },
                             content: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['Weekly', 'Pattern', 'Suggestion', 'Growth', 'Pulse', 'Archetype', 'Spiral', 'Nostalgia'] },
-                            relatedEntryIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+                            type: { type: Type.STRING }
                         }
                     }
                 }
             }
         }));
-        
-        if (response.text) {
-             const patterns = JSON.parse(response.text);
-             return patterns.map((p: any) => ({
-                 ...p,
-                 date: new Date(),
-                 actionLabel: 'View Insight'
-             }));
-        }
-        return [];
+        return JSON.parse(response.text || "[]");
     } catch (e) {
         return handleGeminiError(e, []);
     }
 };
 
-export const chatWithBelluh = async (message: string, _history: { role: 'user' | 'model', text: string }[], persona: UserPersona): Promise<string> => {
+export const chatWithBelluh = async (message: string, _history: any[], persona: UserPersona): Promise<string> => {
      try {
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `You are Belluh, an AI relationship coach.
-            Persona Style: ${persona}
-            User: ${message}`
+            contents: `Persona: ${persona}. User: ${message}`
         }));
-        return response.text || "I'm listening.";
-     } catch (error) {
-         return handleGeminiError(error, "I'm having trouble connecting to Belluh.");
+        return response.text || "Tell me more.";
+     } catch (e) {
+         return handleGeminiError(e, "I'm here for you.");
      }
 };
 
@@ -175,13 +126,11 @@ export const generateDailyReflection = async (entryTexts: string[], persona: Use
      try {
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
-             contents: `Generate a short daily reflection based on these entries.
-             Persona: ${persona}
-             Entries: ${entryTexts.join('\n')}`
+             contents: `Reflection for persona ${persona} based on: ${entryTexts.join('\n')}`
          }));
-         return response.text || "Reflecting...";
+         return response.text || "Reflecting on your day...";
      } catch (e) {
-         return "Reflecting on your journey...";
+         return "A moment of reflection.";
      }
 };
 
@@ -189,8 +138,7 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
     try {
         const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Analyze these entries and determine the relationship archetype.
-            Entries: ${entryTexts.slice(0, 10).join('\n')}`,
+            contents: `Determine the archetype for: ${entryTexts.slice(0, 10).join('\n')}`,
              config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -204,10 +152,9 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
                 }
             }
         }));
-        if (response.text) return JSON.parse(response.text);
-        return { name: "The Builders", description: "Building a life.", strength: "Consistency", growthArea: "Spontaneity" };
+        return JSON.parse(response.text || "{}");
     } catch (e) {
-        return { name: "The Builders", description: "Building a life.", strength: "Consistency", growthArea: "Spontaneity" };
+        return { name: "Partners", description: "Walking together", strength: "Resilience", growthArea: "Communication" };
     }
 };
 
@@ -215,8 +162,7 @@ export const softenConflictMessage = async (text: string): Promise<string> => {
      try {
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
-             contents: `Rewrite this message to be softer and more compassionate, while keeping the core meaning.
-             Message: ${text}`
+             contents: `Soften this message while keeping intent: ${text}`
          }));
          return response.text || text;
      } catch (e) {
@@ -228,14 +174,10 @@ export const detectPersonaFromEntries = async (entries: any[]): Promise<UserPers
      try {
          const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
              model: 'gemini-3-flash-preview',
-             contents: `Analyze the writing style of these entries and match it to one of these personas: Kafka, Hemingway, Nietzsche, Fitzgerald, Camus, Woolf. Return only the persona name.
-             Entries: ${entries.slice(0, 5).map(e => e.content).join('\n')}`
+             contents: `Match style to Kafka, Hemingway, Nietzsche, Fitzgerald, Camus, or Woolf: ${entries.slice(0, 5).map(e => e.content).join('\n')}`
          }));
-         const text = response.text?.trim();
-         if (text && Object.values(UserPersona).includes(text as UserPersona)) {
-             return text as UserPersona;
-         }
-         return UserPersona.Woolf;
+         const match = response.text?.trim();
+         return (match as UserPersona) || UserPersona.Woolf;
      } catch (e) {
          return UserPersona.Woolf;
      }
