@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../types";
 
-// Always initialize with process.env.API_KEY directly as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to initialize AI client just-in-time to avoid race conditions with env vars
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Helper to handle errors gracefully
 const handleGeminiError = (error: any, fallback: any) => {
@@ -29,11 +29,12 @@ export const generateFutureLetter = async (entries: JournalEntry[], userName: st
   const context = entries.slice(0, 20).map(e => e.content).join('\n');
   try {
     const prompt = `Write a poetic letter from 'Future ${userName} & ${partnerName}' (5 years from now) based on these entries:\n${context}`;
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
-    const response = await retryOperation<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    }));
+    const response = await retryOperation<GenerateContentResponse>(() => 
+      getAI().models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      })
+    );
     return response.text || "The future is bright.";
   } catch (e) {
     return handleGeminiError(e, "A letter to your future self...");
@@ -42,9 +43,8 @@ export const generateFutureLetter = async (entries: JournalEntry[], userName: st
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
   try {
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           parts: [
@@ -68,9 +68,8 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
 export const askBelluhAboutJournal = async (query: string, entries: JournalEntry[]): Promise<string> => {
   try {
     const context = entries.slice(0, 30).map(e => `[${e.authorName}]: ${e.content}`).join('\n');
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Context:\n${context}\n\nQuestion: ${query}`
       })
@@ -84,9 +83,8 @@ export const askBelluhAboutJournal = async (query: string, entries: JournalEntry
 export const generateRelationshipSummary = async (entries: JournalEntry[]): Promise<string> => {
   try {
     const context = entries.slice(0, 20).map(e => e.content).join('\n');
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Summarize the growth of this relationship:\n${context}`
       })
@@ -100,9 +98,8 @@ export const generateRelationshipSummary = async (entries: JournalEntry[]): Prom
 export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]> => {
   try {
     const context = entries.slice(0, 15).map(e => e.content).join('\n');
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Identify patterns in these entries. Return as JSON array of objects with id, title, content, and type. \n\nEntries:\n${context}`,
         config: {
@@ -134,11 +131,9 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
 
 export const chatWithBelluh = async (message: string, history: { role: string, text: string }[], persona: UserPersona): Promise<string> => {
   try {
-    // Note: Standard sendMessage doesn't support complex persona in simple call, using generateContent for flexibility
     const context = history.map(h => `${h.role === 'model' ? 'Belluh' : 'User'}: ${h.text}`).join('\n');
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Persona Style: ${persona}\n\nRecent History:\n${context}\n\nUser: ${message}\nBelluh:`
       })
@@ -151,9 +146,8 @@ export const chatWithBelluh = async (message: string, history: { role: string, t
 
 export const generateDailyReflection = async (entryTexts: string[], persona: UserPersona): Promise<string> => {
   try {
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Reflection for persona ${persona} based on: ${entryTexts.join('\n')}`
       })
@@ -166,9 +160,8 @@ export const generateDailyReflection = async (entryTexts: string[], persona: Use
 
 export const getRelationshipArchetype = async (entryTexts: string[]): Promise<RelationshipArchetype> => {
   try {
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Determine the archetype for this relationship based on these entries:\n\n${entryTexts.slice(0, 10).join('\n')}`,
         config: {
@@ -199,9 +192,8 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
 
 export const softenConflictMessage = async (text: string): Promise<string> => {
   try {
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Soften this message while keeping intent: ${text}`
       })
@@ -214,9 +206,8 @@ export const softenConflictMessage = async (text: string): Promise<string> => {
 
 export const detectPersonaFromEntries = async (entries: any[]): Promise<UserPersona> => {
   try {
-    // Explicitly type response to fix "property 'text' does not exist on type unknown"
     const response = await retryOperation<GenerateContentResponse>(() =>
-      ai.models.generateContent({
+      getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Match this writing style to ONE of: Kafka, Hemingway, Nietzsche, Fitzgerald, Camus, or Woolf. Return ONLY the name, nothing else.\n\n${entries
           .slice(0, 5)
