@@ -99,7 +99,7 @@ export const generateRelationshipSummary = async (entries: JournalEntry[]): Prom
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Analyze the current state of this relationship. Be personal, observant, and warm like a close friend. Make them feel seen. Observe if they're growing closer, distancing, talking less, having more arguments, or dealing with conflict. Be honest but compassionate. Do not use hashtags, asterisks, or markdown formatting. Just pure text.\n\nContext:\n${context}`
+        contents: `Provide a concise, 2-3 sentence summary of the relationship's current state based on these entries. Be honest but compassionate. Focus on the core emotional trajectory (growing closer, drifting, conflict, or harmony). Keep it brief and glanceable. Do not use hashtags, asterisks, or markdown formatting. Just pure text.\n\nContext:\n${context}`
       })
     );
     return response.text || "You are walking through something together.";

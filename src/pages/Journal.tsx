@@ -3,6 +3,7 @@ import { EntryType, Mood } from '../types';
 import { DAILY_PROMPTS, MOOD_EMOJIS } from '../constants';
 import { Mic, Image as ImageIcon, Send, X, Loader2, Music, CheckCircle2, Lock, Globe } from 'lucide-react';
 import { transcribeAudio } from '../services/geminiService';
+import { supabase } from '../lib/supabaseClient';
 
 interface JournalProps {
   onAddEntry: (content: string, mood: Mood | undefined, type: EntryType, prompt?: string, isPrivate?: boolean, audioUrl?: string, mediaUrl?: string) => void;
@@ -37,7 +38,15 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Intelligent MIME type detection for cross-browser compatibility (Safari vs Chrome)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : MediaRecorder.isTypeSupported('audio/mp4') 
+            ? 'audio/mp4' 
+            : 'audio/webm'; // Fallback
+            
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -48,17 +57,54 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioChunksRef.current.length === 0) return;
+
+        // Use the actual MIME type the browser decided to use
+        const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+        const fileExt = finalMimeType.includes('mp4') ? 'mp4' : 'webm';
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
         const reader = new FileReader();
+        
         reader.readAsDataURL(audioBlob);
         reader.onloadend = async () => {
             if (reader.result) {
-                const base64Audio = (reader.result as string).split(',')[1];
+                const fullDataUrl = reader.result as string;
+                const base64Audio = fullDataUrl.split(',')[1];
+                
                 setIsTranscribing(true);
-                const text = await transcribeAudio(base64Audio, 'audio/webm');
-                setContent(prev => prev + (prev ? ' ' : '') + text);
-                setIsTranscribing(false);
-                setAudioUrl(URL.createObjectURL(audioBlob));
+                
+                try {
+                    // Parallelize Transcription and Upload for speed
+                    const transcriptionPromise = transcribeAudio(base64Audio, finalMimeType);
+                    
+                    const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const uploadPromise = supabase.storage
+                        .from('journal-media')
+                        .upload(fileName, audioBlob, {
+                            contentType: finalMimeType
+                        });
+
+                    const [text, { data, error }] = await Promise.all([
+                        transcriptionPromise,
+                        uploadPromise
+                    ]);
+
+                    setContent(prev => prev + (prev ? ' ' : '') + text);
+
+                    if (!error && data) {
+                        const { data: publicUrlData } = supabase.storage
+                            .from('journal-media')
+                            .getPublicUrl(fileName);
+                        setAudioUrl(publicUrlData.publicUrl);
+                    } else {
+                        console.error('Upload failed:', error);
+                    }
+                } catch (err) {
+                    console.error("Error processing voice note:", err);
+                } finally {
+                    setIsTranscribing(false);
+                }
             }
         };
       };
@@ -172,19 +218,19 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder={isTranscribing ? "Transcribing..." : "Start typing..."}
+                    placeholder={isTranscribing ? "Processing audio..." : "Start typing..."}
                     className="w-full bg-transparent text-slate-800 placeholder:text-slate-300 focus:outline-none resize-none font-serif text-xl leading-relaxed flex-1"
                     autoFocus
                     disabled={isTranscribing}
                 />
                 <div className="mt-auto pt-6 flex items-center justify-between">
                     <div className="flex gap-2">
-                         <button onClick={handleMicClick} className={`h-12 px-5 rounded-full flex items-center gap-2 transition-all ${isRecording ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
-                            {isRecording ? <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : <Mic size={18} />}
+                         <button onClick={handleMicClick} disabled={isTranscribing} className={`h-12 px-5 rounded-full flex items-center gap-2 transition-all ${isRecording ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
+                            {isRecording ? <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : (isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />)}
                         </button>
-                        {!isRecording && <button onClick={handleImageClick} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${hasImage ? 'bg-belluh-50 text-belluh-600' : 'bg-slate-50 text-slate-500'}`}><ImageIcon size={18} /></button>}
+                        {!isRecording && !isTranscribing && <button onClick={handleImageClick} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${hasImage ? 'bg-belluh-50 text-belluh-600' : 'bg-slate-50 text-slate-500'}`}><ImageIcon size={18} /></button>}
                     </div>
-                    {(content.trim() || hasImage || audioUrl) && !isRecording && (
+                    {(content.trim() || hasImage || audioUrl) && !isRecording && !isTranscribing && (
                         <button onClick={handleNext} disabled={isTranscribing} className="h-12 px-8 bg-slate-900 text-white rounded-full font-bold text-sm flex items-center gap-2">
                             <span>Next</span> <Send size={14} />
                         </button>
