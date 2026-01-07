@@ -2,7 +2,15 @@ import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../types";
 
 // Helper to initialize AI client just-in-time to avoid race conditions with env vars
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => {
+  // According to guidelines, the API key must be obtained exclusively from process.env.API_KEY
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    console.error("Belluh AI Error: API Key is missing. Please set API_KEY in your environment.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 // Helper to handle errors gracefully
 const handleGeminiError = (error: any, fallback: any) => {
@@ -56,7 +64,7 @@ ${context}`;
 
 export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
   try {
-    const response = await retryOperation<GenerateContentResponse>(() =>
+    const aiPromise = retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
@@ -67,11 +75,18 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
                 data: base64Audio,
               },
             },
-            { text: "Transcribe this audio accurately. Only return the text." },
+            { text: "Transcribe the following audio exactly as spoken. Return ONLY the verbatim transcript. Do not add any introductory or concluding remarks. Do not summarize. Do not use markdown. Just the raw text." },
           ]
         }
       })
     );
+
+    // Add 20-second timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Transcription timed out")), 20000)
+    );
+
+    const response = await Promise.race([aiPromise, timeoutPromise]);
     return response.text || "";
   } catch (e) {
     return handleGeminiError(e, "");
@@ -110,6 +125,9 @@ export const generateRelationshipSummary = async (entries: JournalEntry[]): Prom
 
 export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]> => {
   try {
+    // Require at least some context
+    if (entries.length === 0) return [];
+
     const context = entries.slice(0, 15).map(e => e.content).join('\n');
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
@@ -136,8 +154,14 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
         }
       })
     );
-    return JSON.parse(response.text || "[]");
+    
+    // Robust cleanup to ensure valid JSON parsing even if model returns markdown block
+    const rawText = response.text || "[]";
+    const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
+    
+    return JSON.parse(cleanText);
   } catch (e) {
+    console.error("Pattern detection failed:", e);
     return handleGeminiError(e, []);
   }
 };
@@ -192,7 +216,12 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
         }
       })
     );
-    return JSON.parse(response.text || "{}");
+    
+    // Cleanup for robustness
+    const rawText = response.text || "{}";
+    const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
+    
+    return JSON.parse(cleanText);
   } catch (e) {
     return {
       name: "Partners",
