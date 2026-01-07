@@ -3,11 +3,11 @@ import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../ty
 
 // Helper to initialize AI client just-in-time to avoid race conditions with env vars
 const getAI = () => {
-  // According to guidelines, the API key must be obtained exclusively from process.env.API_KEY
+  // Use process.env.API_KEY exclusively as per guidelines
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    console.error("Belluh AI Error: API Key is missing. Please set API_KEY in your environment.");
+    console.error("Belluh AI Error: API Key is missing. Please set process.env.API_KEY.");
   }
   return new GoogleGenAI({ apiKey: apiKey || '' });
 };
@@ -75,7 +75,7 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
                 data: base64Audio,
               },
             },
-            { text: "Transcribe the following audio exactly as spoken. Return ONLY the verbatim transcript. Do not add any introductory or concluding remarks. Do not summarize. Do not use markdown. Just the raw text." },
+            { text: "Transcribe the following audio exactly as spoken. Return ONLY the verbatim transcript. Do not add any introductory or concluding remarks. Do not summarize. Do not use markdown formatting. Just the raw text of what was said." },
           ]
         }
       })
@@ -155,7 +155,7 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
       })
     );
     
-    // Robust cleanup to ensure valid JSON parsing even if model returns markdown block
+    // Fix: Remove Markdown code blocks from JSON response if present
     const rawText = response.text || "[]";
     const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
     
@@ -217,7 +217,7 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
       })
     );
     
-    // Cleanup for robustness
+    // Fix: Remove Markdown code blocks from JSON response if present
     const rawText = response.text || "{}";
     const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
     
