@@ -28,16 +28,29 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
 export const generateFutureLetter = async (entries: JournalEntry[], userName: string, partnerName: string): Promise<string> => {
   const context = entries.slice(0, 20).map(e => e.content).join('\n');
   try {
-    const prompt = `Write a poetic letter from 'Future ${userName} & ${partnerName}' (5 years from now) based on these entries:\n${context}`;
+    const prompt = `You are writing a letter from Future ${userName} & ${partnerName} (5 years from now) looking back at where they are today. Based on their current journal entries, extrapolate what their relationship will look like if they continue on this exact trajectory without change.
+
+If the entries show:
+- Strong communication, love, positivity, growth → Write about a thriving, deepening partnership
+- Distance, less talking, arguments, doubt, coldness → Write about a relationship that drifted apart or ended, serving as a wake-up call
+- Mixed signals or uncertainty → Write about a relationship at a crossroads
+
+Make it deeply personal. Mimic their writing style. Be honest but compassionate. This should feel like a genuine letter from their future selves—a reality check or affirmation of where they're headed.
+
+Do not use asterisks, hashtags, or markdown. Make it feel handwritten and authentic.
+
+Entries:
+${context}`;
+
     const response = await retryOperation<GenerateContentResponse>(() => 
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
       })
     );
-    return response.text || "The future is bright.";
+    return response.text || "The future is unwritten. What will you choose?";
   } catch (e) {
-    return handleGeminiError(e, "A letter to your future self...");
+    return handleGeminiError(e, "A letter to your future selves...");
   }
 };
 
@@ -86,12 +99,12 @@ export const generateRelationshipSummary = async (entries: JournalEntry[]): Prom
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Summarize the growth of this relationship:\n${context}`
+        contents: `Analyze the current state of this relationship. Be personal, observant, and warm like a close friend. Make them feel seen. Observe if they're growing closer, distancing, talking less, having more arguments, or dealing with conflict. Be honest but compassionate. Do not use hashtags, asterisks, or markdown formatting. Just pure text.\n\nContext:\n${context}`
       })
     );
-    return response.text || "You are growing together.";
+    return response.text || "You are walking through something together.";
   } catch (e) {
-    return handleGeminiError(e, "A summary of your journey...");
+    return handleGeminiError(e, "A moment in your journey...");
   }
 };
 
