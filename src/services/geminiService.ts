@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../types";
+import { JournalEntry, Insight, RelationshipArchetype, UserPersona, RelationshipReceipt, RelationshipForecast } from "../types";
 
 // Helper to initialize AI client just-in-time
 const getAI = () => {
@@ -234,15 +234,30 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
 
 export const softenConflictMessage = async (text: string): Promise<string> => {
   try {
+    const prompt = `You are a wise, empathetic friend helping a couple communicate. The user is upset and wants to say: "${text}".
+
+1. First, validate their feeling in one short sentence (e.g., "I hear that you're hurt," or "It makes sense you're frustrated").
+2. Then, provide 3 distinct options to help them express this need without attacking, formatted clearly:
+   - Option A: Vulnerable (Focus on "I feel" and the underlying need)
+   - Option B: Constructive (Focus on the solution/future)
+   - Option C: Low-Key (Casual but clear, for lower tension)
+
+Return ONLY plain text. Do NOT use markdown. Do NOT use asterisks (*), bolding (**), or bullet points. Use simple numbering or newlines. Keep the tone warm and supportive.`;
+
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Soften this message while keeping intent: ${text}`
+        contents: prompt
       })
     );
-    return response.text || text;
+    
+    // Force strip any remaining markdown artifacts to ensure clean "friend-like" text
+    let cleanText = response.text || "Let's take a breath and try to say that with love.";
+    cleanText = cleanText.replace(/\*\*/g, '').replace(/\*/g, '').replace(/###/g, '');
+    
+    return cleanText;
   } catch (e) {
-    return text;
+    return "I can see you're upset. Maybe try starting with 'I feel...' instead of 'You always...'";
   }
 };
 
@@ -263,3 +278,115 @@ export const detectPersonaFromEntries = async (entries: any[]): Promise<UserPers
     return UserPersona.Woolf;
   }
 };
+
+// --- THIEL UPGRADE: VIRAL DISTRIBUTION ENGINE ---
+export const generateRelationshipReceipt = async (entries: JournalEntry[], coupleName: string): Promise<RelationshipReceipt> => {
+    try {
+        const context = entries.slice(0, 20).map(e => e.content).join('\n');
+        
+        const response = await retryOperation<GenerateContentResponse>(() => 
+            getAI().models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `Generate a funny, witty 'Relationship Receipt' based on these journal entries for ${coupleName}. 
+                It should look like a store receipt of their love life.
+                Items should be abstract emotional transactions (e.g., 'Late Night Talks', 'Patience', 'Bad Puns').
+                Price should be abstract values (e.g., '3 hrs sleep', 'Priceless', '1 Headache').
+                
+                Context: ${context}`,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            merchantName: { type: Type.STRING },
+                            date: { type: Type.STRING },
+                            items: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        qty: { type: Type.NUMBER },
+                                        desc: { type: Type.STRING },
+                                        price: { type: Type.STRING },
+                                    },
+                                    required: ['qty', 'desc', 'price']
+                                }
+                            },
+                            subtotal: { type: Type.STRING },
+                            tax: { type: Type.STRING },
+                            total: { type: Type.STRING },
+                            footerQuote: { type: Type.STRING }
+                        },
+                        required: ['merchantName', 'items', 'total', 'footerQuote']
+                    }
+                }
+            })
+        );
+        
+        const rawText = response.text || "{}";
+        const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
+        return JSON.parse(cleanText);
+
+    } catch (e) {
+        // Fallback Receipt
+        return {
+            merchantName: "Belluh Inc.",
+            date: new Date().toLocaleDateString(),
+            items: [
+                { qty: 1, desc: "Technical Difficulty", price: "$0.00" },
+                { qty: 100, desc: "Love", price: "Priceless" }
+            ],
+            subtotal: "Infinite",
+            tax: "0.00",
+            total: "Forever",
+            footerQuote: "Love is the only currency."
+        };
+    }
+};
+
+// --- THIEL UPGRADE: PROPRIETARY INTELLIGENCE ENGINE ---
+export const generateRelationshipForecast = async (entries: JournalEntry[]): Promise<RelationshipForecast> => {
+    try {
+        const context = entries.slice(0, 15).map(e => `${e.timestamp.toDateString()}: ${e.mood} - ${e.content}`).join('\n');
+        
+        const response = await retryOperation<GenerateContentResponse>(() => 
+            getAI().models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `Analyze the 'Emotional Velocity' and 'Sentiment Volatility' of these entries to predict the relationship 'weather' for the next 3 days.
+                Be analytical like a data scientist but empathetic like a friend.
+                
+                Context: ${context}`,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            weather: { 
+                                type: Type.STRING, 
+                                enum: ['Sunny', 'Cloudy', 'Stormy', 'Clear Skies']
+                            },
+                            temperature: { type: Type.NUMBER, description: "0-100 Synergy Score" },
+                            forecast: { type: Type.STRING },
+                            velocity: { 
+                                type: Type.STRING,
+                                enum: ['Accelerating', 'Stable', 'Decelerating']
+                            }
+                        },
+                        required: ['weather', 'temperature', 'forecast', 'velocity']
+                    }
+                }
+            })
+        );
+         const rawText = response.text || "{}";
+         const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
+         return JSON.parse(cleanText);
+
+    } catch (e) {
+        return {
+            weather: 'Clear Skies',
+            temperature: 85,
+            forecast: "Data unavailable, but the horizon looks bright.",
+            velocity: 'Stable'
+        };
+    }
+}

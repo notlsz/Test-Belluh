@@ -148,3 +148,26 @@ export interface Goal {
   isCompleted: boolean;
   dueDate?: Date;
 }
+
+// Thiel Distribution Strategy: The Viral Artifact
+export interface RelationshipReceipt {
+  merchantName: string; // "The Love Store" or "Belluh HQ"
+  date: string;
+  items: {
+    qty: number;
+    desc: string; // "Patience during movie selection"
+    price: string; // "Priceless" or "2 hrs"
+  }[];
+  subtotal: string;
+  tax: string; // "10% Stress"
+  total: string; // "Infinite"
+  footerQuote: string; // Witty AI generated footer
+}
+
+// Thiel Engineering Strategy: Predictive Data
+export interface RelationshipForecast {
+  weather: 'Sunny' | 'Cloudy' | 'Stormy' | 'Clear Skies';
+  temperature: number; // 0-100 Synergy
+  forecast: string; // "High probability of deep conversation this weekend based on rising intimacy velocity."
+  velocity: 'Accelerating' | 'Stable' | 'Decelerating';
+}

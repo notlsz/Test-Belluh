@@ -71,30 +71,37 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
     if (!chatInput.trim()) return;
     
     setIsTyping(true);
-    let messageToSend = chatInput;
-    let uiMessage = chatInput;
+    const originalInput = chatInput;
+    
+    // 1. Show User's Message (Honesty / Validation)
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: originalInput, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
+    setChatInput('');
 
+    // 2. Conflict Mode Logic
     if (isConflictMode) {
-        const softened = await softenConflictMessage(chatInput);
-        uiMessage = softened; 
-        
-        const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: softened, timestamp: new Date() };
-        setMessages(prev => [...prev, userMsg]);
-        
-        const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: "I've softened your words to help love flow through the conflict. This version is safer to share.", timestamp: new Date() };
-        setMessages(prev => [...prev, aiMsg]);
-        setChatInput('');
-        setIsConflictMode(false);
-        setIsTyping(false);
+        try {
+            const mediationAdvice = await softenConflictMessage(originalInput);
+            
+            const aiMsg: ChatMessage = { 
+                id: (Date.now() + 1).toString(), 
+                role: 'model', 
+                text: mediationAdvice, 
+                timestamp: new Date() 
+            };
+            setMessages(prev => [...prev, aiMsg]);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsConflictMode(false);
+            setIsTyping(false);
+        }
         return;
     }
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: uiMessage, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
-    setChatInput('');
-    
+    // 3. Normal Chat Logic
     const historyForAI = messages.map(m => ({ role: m.role, text: m.text }));
-    const aiResponseText = await chatWithBelluh(messageToSend, historyForAI, detectedPersona);
+    const aiResponseText = await chatWithBelluh(originalInput, historyForAI, detectedPersona);
     
     const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: aiResponseText, timestamp: new Date() };
     setMessages(prev => [...prev, aiMsg]);
@@ -151,7 +158,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                                    <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
                                        <Sparkles size={14} />
                                    </div>
-                                   <div className="prose prose-slate prose-p:font-serif prose-p:text-lg prose-p:leading-loose max-w-none">
+                                   <div className="prose prose-slate prose-p:font-serif prose-p:text-lg prose-p:leading-loose max-w-none whitespace-pre-wrap">
                                        <p>{msg.text}</p>
                                    </div>
                                </div>
@@ -178,11 +185,11 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
            </div>
        </div>
 
-       {/* Input Area */}
+       {/* Input Area - Adjusted for Perfect Optical Centering */}
        <div className="fixed bottom-0 left-0 right-0 p-4 pb-28 bg-gradient-to-t from-white via-white to-transparent pt-12 z-40">
             <div className="max-w-2xl mx-auto relative flex flex-col">
-                {/* Conflict Toggle - Positioned cleanly above input */}
-                <div className="flex justify-start mb-2 pl-1">
+                {/* Conflict Toggle */}
+                <div className="flex justify-start mb-3 pl-1">
                     <button 
                         onClick={() => setIsConflictMode(!isConflictMode)}
                         className={`
@@ -199,10 +206,10 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                 </div>
 
                 <div className={`
-                    w-full relative rounded-[26px] shadow-2xl transition-all duration-300 border
+                    w-full relative rounded-[2rem] shadow-2xl transition-all duration-300 border flex items-center p-2 pr-3 min-h-[64px] bg-white
                     ${isConflictMode 
-                        ? 'bg-rose-50 shadow-rose-100/50 border-rose-100' 
-                        : 'bg-white shadow-slate-200/50 border-slate-200 focus-within:shadow-slate-300/60 focus-within:border-slate-300'
+                        ? 'shadow-rose-100/50 border-rose-100' 
+                        : 'shadow-slate-200/50 border-slate-200 focus-within:shadow-slate-300/60 focus-within:border-slate-300'
                     }
                 `}>
                     <textarea
@@ -214,15 +221,16 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                                 handleSendMessage();
                             }
                         }}
-                        placeholder={isConflictMode ? "Write your frustration here..." : "Message Belluh..."}
-                        className="w-full bg-transparent border-none py-4 pl-5 pr-12 max-h-40 min-h-[56px] resize-none focus:outline-none text-slate-800 placeholder:text-slate-400 text-[16px]"
+                        placeholder={isConflictMode ? "What happened? Be honest..." : "Message Belluh..."}
+                        className="w-full bg-transparent border-none px-6 py-3 max-h-32 resize-none focus:outline-none text-slate-800 placeholder:text-slate-400 text-[16px] leading-relaxed self-center"
                         rows={1}
+                        style={{ overflow: 'hidden' }}
                     />
                     <button 
                         onClick={handleSendMessage}
                         disabled={!chatInput.trim()}
                         className={`
-                            absolute bottom-2 right-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
+                            w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ml-2
                             ${chatInput.trim() 
                                 ? 'bg-slate-900 text-white hover:bg-black active:scale-95' 
                                 : 'bg-slate-100 text-slate-300'

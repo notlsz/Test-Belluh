@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { generateRelationshipReceipt } from '../services/geminiService';
 
 interface ProfileProps {
   user: User;
@@ -21,11 +22,14 @@ interface ProfileProps {
   onDeclineInvite?: (id: string) => void;
 }
 
-const STICKY_STYLES = [
-  'bg-[#fefce8] text-amber-900/80 shadow-soft rotate-1 hover:rotate-0',
-  'bg-[#fff1f2] text-rose-900/80 shadow-soft -rotate-1 hover:rotate-0',
-  'bg-[#f0f9ff] text-sky-900/80 shadow-soft rotate-2 hover:rotate-0',
-  'bg-[#faf5ff] text-purple-900/80 shadow-soft -rotate-2 hover:rotate-0',
+// Updated Pastel Palette - "Sam Altman" Quality - Richer, trendier pastels
+const RECEIPT_COLORS = [
+    { name: 'Classic', hex: '#ffffff', text: 'text-slate-900', border: 'border-slate-200' },
+    { name: 'Blush', hex: '#ffe4e6', text: 'text-rose-950', border: 'border-rose-200' }, // Richer Pink
+    { name: 'Miami', hex: '#cffafe', text: 'text-cyan-950', border: 'border-cyan-200' }, // Vibrant Cyan
+    { name: 'Matcha', hex: '#dcfce7', text: 'text-emerald-950', border: 'border-emerald-200' }, // Fresh Green
+    { name: 'Lavender', hex: '#f3e8ff', text: 'text-purple-950', border: 'border-purple-200' }, // Soft Purple
+    { name: 'Cream', hex: '#fef3c7', text: 'text-amber-950', border: 'border-amber-200' }, // Warm Yellow
 ];
 
 interface CircleCardProps {
@@ -74,10 +78,12 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'searching' | 'sent' | 'not-found'>('idle');
   const [invitingCircleId, setInvitingCircleId] = useState<string | null>(null);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [newGoal, setNewGoal] = useState('');
-  const [isAddingGoal, setIsAddingGoal] = useState(false);
+  
+  // Receipt State
+  const [receiptData, setReceiptData] = useState<RelationshipReceipt | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [generatingReceipt, setGeneratingReceipt] = useState(false);
+  const [receiptColorIdx, setReceiptColorIdx] = useState(0);
 
   const activeCircle = user.circles.find(c => c.id === activeCircleId);
   const activeCircles = user.circles.filter(c => c.status === CircleStatus.Active);
@@ -110,7 +116,6 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
   const handleCircleSwitch = (id: string) => { setActiveCircleId(id); onCircleChange(id); };
 
-  // Triggering the invite modal for a specific circle
   const handleTriggerInvite = (circleId: string) => {
     setInvitingCircleId(circleId);
     setShowInviteModal(true);
@@ -118,13 +123,42 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
   const handleSaveProfile = () => { onUpdateUser({ name: editName, avatar: editAvatar }); setIsEditingProfile(false); };
 
-  const handleAddNote = async () => {
-    if (!newNoteContent.trim()) return;
-    const newNote: LoveNote = { id: Date.now().toString(), content: newNoteContent, isPinned: false, createdAt: new Date(), forUserId: 'all', authorId: user.id, circleId: activeCircleId };
-    setNotes([newNote, ...notes]);
-    setNewNoteContent(''); setIsAddingNote(false);
-    await supabase.from('journal_entries').insert({ user_id: user.id, content: newNote.content, type: 'Freeform', tags: ['sticky_note'], is_shared: true, date: new Date().toISOString() });
-    onShowToast('Note added!', 'success');
+  const handleGenerateReceipt = async () => {
+      setGeneratingReceipt(true);
+      setShowReceipt(true);
+      if (!receiptData) {
+          const data = await generateRelationshipReceipt(entries, `${user.name} & ${user.partnerName || 'Partner'}`);
+          setReceiptData(data);
+      }
+      setGeneratingReceipt(false);
+  };
+
+  const handleShare = async (platform?: 'whatsapp' | 'twitter' | 'copy') => {
+      if (!receiptData) return;
+      const shareText = `🧾 RELATIONSHIP RECEIPT\n\n${receiptData.merchantName}\nDate: ${receiptData.date}\nTotal: ${receiptData.total}\n\n"${receiptData.footerQuote}"\n\nGenerated by Belluh AI`;
+      
+      if (platform === 'whatsapp') {
+          window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+      } else if (platform === 'twitter') {
+          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
+      } else if (platform === 'copy') {
+          await navigator.clipboard.writeText(shareText);
+          onShowToast("Receipt copied to clipboard!", "success");
+      } else {
+          if (navigator.share) {
+              try {
+                  await navigator.share({
+                      title: 'Our Relationship Receipt',
+                      text: shareText,
+                      url: window.location.href
+                  });
+              } catch (err) {
+                  console.log("Share cancelled");
+              }
+          } else {
+              handleShare('copy');
+          }
+      }
   };
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
@@ -133,10 +167,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       
       setInviteStatus('searching');
       try {
-          const { data: profiles } = await supabase
-              .from('profiles')
-              .select('id')
-              .ilike('email', inviteEmail.trim());
+          const { data: profiles } = await supabase.from('profiles').select('id').ilike('email', inviteEmail.trim());
 
           if (!profiles || profiles.length === 0) {
               setInviteStatus('not-found');
@@ -150,16 +181,13 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               return;
           }
 
-          // Create pending connection invite
           const { error } = await supabase.from('partner_connections').insert({
               user_id: user.id,
               partner_id: partnerId,
               status: 'pending'
           });
 
-          if (error) {
-              console.error(error);
-          }
+          if (error) console.error(error);
           
           setInviteStatus('sent');
           onShowToast('Invite sent!', 'success');
@@ -174,6 +202,8 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           setInviteStatus('idle');
       }
   };
+
+  const currentColor = RECEIPT_COLORS[receiptColorIdx];
 
   return (
     <div className="pb-32 pt-10 px-0 max-w-4xl mx-auto min-h-screen bg-paper">
@@ -204,9 +234,36 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Current Resonance</p>
                   <h3 className={`text-3xl font-serif ${pulseStatus.color}`}>{pulseStatus.text}</h3>
               </div>
+              
+              {/* Artifact Grid */}
               <div className="grid grid-cols-2 gap-4">
-                  <div onClick={() => onViewArtifact('letter')} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col aspect-square justify-between cursor-pointer"><Mail size={20} className="text-[#f0addd]" /><h4 className="font-serif text-lg text-slate-900 font-bold">To Future Us</h4></div>
-                  <div onClick={() => onViewArtifact('reel')} className="bg-slate-900 p-6 rounded-[2rem] shadow-lg flex flex-col aspect-square justify-between cursor-pointer"><Film size={20} className="text-white" /><h4 className="font-serif text-lg text-white font-bold">Chapter Reel</h4></div>
+                  <div onClick={() => onViewArtifact('letter')} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col aspect-square justify-between cursor-pointer hover:shadow-md transition-shadow">
+                      <Mail size={24} className="text-[#f0addd]" />
+                      <div>
+                          <h4 className="font-serif text-lg text-slate-900 font-bold">Future Letter</h4>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Unlock 2030</p>
+                      </div>
+                  </div>
+                  <div onClick={() => onViewArtifact('reel')} className="bg-slate-900 p-6 rounded-[2rem] shadow-lg flex flex-col aspect-square justify-between cursor-pointer hover:scale-[1.02] transition-transform">
+                      <Film size={24} className="text-white" />
+                      <div>
+                          <h4 className="font-serif text-lg text-white font-bold">Chapter Reel</h4>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Highlights</p>
+                      </div>
+                  </div>
+                  <div onClick={handleGenerateReceipt} className="col-span-2 bg-[#f0addd] p-6 rounded-[2rem] shadow-lg flex items-center justify-between cursor-pointer hover:bg-[#e57ec3] transition-colors relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
+                       <div className="relative z-10 flex items-center gap-4">
+                           <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                               <Receipt size={24} />
+                           </div>
+                           <div className="text-white">
+                               <h4 className="font-serif text-xl font-bold">Print Receipt</h4>
+                               <p className="text-xs font-medium opacity-80">Generate your relationship invoice</p>
+                           </div>
+                       </div>
+                       <ArrowRight className="text-white" size={20} />
+                  </div>
               </div>
 
               {/* Accept/Decline Invitations UI */}
@@ -280,6 +337,160 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   <button onClick={() => setShowSettingsModal(false)} className="w-full mt-10 bg-slate-900 text-white py-4 rounded-2xl font-bold">Done</button>
               </div>
           </div>
+      )}
+
+      {/* High-Fidelity Receipt Modal */}
+      {showReceipt && (
+           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowReceipt(false)}>
+               {generatingReceipt || !receiptData ? (
+                   <div className="flex flex-col items-center gap-6 text-white animate-pulse">
+                       <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
+                           <Receipt size={40} className="text-white/80" />
+                       </div>
+                       <p className="font-bold tracking-[0.2em] uppercase text-xs text-white/60">Calculations in progress...</p>
+                   </div>
+               ) : (
+                   <div className="flex flex-col items-center gap-6 animate-slide-up w-full max-w-[340px]" onClick={e => e.stopPropagation()}>
+                       
+                       {/* THE RECEIPT CONTAINER */}
+                       {/* Enforce width 340px to ensure perfect 20px sawtooth division (340/20 = 17) */}
+                       <div className="w-[340px] relative shadow-2xl transition-all duration-500" style={{ filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.3))' }}>
+                            {/* Receipt Body */}
+                            <div 
+                                className={`relative w-full p-8 pb-12 transition-colors duration-500 ${currentColor.text}`}
+                                style={{ backgroundColor: currentColor.hex }}
+                            >
+                                {/* Jagged Top - Inverted Convex Bumps (Holes) */}
+                                <div className="absolute top-0 left-0 w-full h-3 -mt-3" 
+                                    style={{ 
+                                        background: `radial-gradient(circle at 10px 10px, ${currentColor.hex} 10px, transparent 10.5px)`,
+                                        backgroundSize: '20px 20px',
+                                        backgroundPosition: 'top center',
+                                        transform: 'rotate(180deg)'
+                                    }}
+                                ></div>
+
+                                {/* Content */}
+                                <div className="flex flex-col items-center mb-8 relative z-10">
+                                     <div className="w-12 h-12 border-2 border-current rounded-full flex items-center justify-center mb-4 opacity-80">
+                                         <Infinity size={24} />
+                                     </div>
+                                     <h2 className="font-mono text-xl font-bold uppercase tracking-widest text-center leading-tight mb-2">{receiptData.merchantName}</h2>
+                                     <p className="font-mono text-[10px] uppercase tracking-widest opacity-60">{receiptData.date} • {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                </div>
+
+                                <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
+
+                                <div className="space-y-4 font-mono text-xs mb-8">
+                                    {receiptData.items.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-start gap-4">
+                                            <div className="flex gap-2">
+                                                <span className="opacity-50">{item.qty}</span>
+                                                <span className="uppercase font-bold tracking-tight">{item.desc}</span>
+                                            </div>
+                                            <span className="font-bold whitespace-nowrap">{item.price}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
+
+                                <div className="space-y-2 font-mono text-xs mb-8">
+                                    <div className="flex justify-between">
+                                        <span className="opacity-60 uppercase">Subtotal</span>
+                                        <span>{receiptData.subtotal}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="opacity-60 uppercase">Emotional Tax</span>
+                                        <span>{receiptData.tax}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t border-dashed border-current border-opacity-30">
+                                        <span>TOTAL</span>
+                                        <span>{receiptData.total}</span>
+                                    </div>
+                                </div>
+
+                                <div className="text-center">
+                                    <p className="font-mono text-[10px] uppercase opacity-60 mb-6 max-w-[200px] mx-auto leading-relaxed">
+                                        "{receiptData.footerQuote}"
+                                    </p>
+                                    
+                                    {/* Simulated Barcode */}
+                                    <div className="h-10 w-4/5 mx-auto opacity-80 mix-blend-multiply" 
+                                        style={{ 
+                                            background: `repeating-linear-gradient(90deg, 
+                                                currentColor 0px, currentColor 2px, 
+                                                transparent 2px, transparent 4px, 
+                                                currentColor 4px, currentColor 5px, 
+                                                transparent 5px, transparent 8px,
+                                                currentColor 8px, currentColor 11px,
+                                                transparent 11px, transparent 12px
+                                            )` 
+                                        }}>
+                                    </div>
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.3em] mt-2 opacity-40">Thank You For Shopping</p>
+                                </div>
+
+                                {/* Paper Texture Overlay */}
+                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+
+                                {/* Jagged Bottom - Convex Bumps */}
+                                <div className="absolute bottom-0 left-0 w-full h-3 -mb-3" 
+                                    style={{ 
+                                        background: `radial-gradient(circle at 10px 0, ${currentColor.hex} 10px, transparent 10.5px)`,
+                                        backgroundSize: '20px 10px',
+                                        backgroundRepeat: 'repeat-x',
+                                    }}
+                                ></div>
+                            </div>
+                       </div>
+                       
+                       {/* Controls UI - The "Share & Customize" Center */}
+                       <div className="flex flex-col items-center gap-6 w-full animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                           
+                           {/* Color Picker */}
+                           <div className="flex gap-3 bg-white/10 backdrop-blur-md p-2 rounded-full border border-white/20 overflow-x-auto max-w-full">
+                               {RECEIPT_COLORS.map((color, idx) => (
+                                   <button 
+                                     key={idx}
+                                     onClick={() => setReceiptColorIdx(idx)}
+                                     className={`w-8 h-8 rounded-full border-2 shrink-0 transition-all ${receiptColorIdx === idx ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'}`}
+                                     style={{ backgroundColor: color.hex }}
+                                     title={color.name}
+                                   />
+                               ))}
+                           </div>
+
+                           {/* Share Grid */}
+                           <div className="flex gap-4">
+                               <button 
+                                 onClick={() => handleShare()}
+                                 className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-full font-bold text-sm shadow-xl hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+                               >
+                                   <Share2 size={16} />
+                                   <span>Share</span>
+                               </button>
+                               <div className="flex gap-2">
+                                   <button onClick={() => handleShare('copy')} className="w-12 h-12 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/30 transition-all backdrop-blur-md border border-white/10" title="Instagram/Snapchat (Copy)">
+                                       <CameraIcon size={20} />
+                                   </button>
+                                   <button onClick={() => handleShare('twitter')} className="w-12 h-12 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/30 transition-all backdrop-blur-md border border-white/10" title="X">
+                                       <Twitter size={20} />
+                                   </button>
+                                   <button onClick={() => handleShare('whatsapp')} className="w-12 h-12 bg-white/20 text-white rounded-full flex items-center justify-center hover:bg-white/30 transition-all backdrop-blur-md border border-white/10" title="Message">
+                                       <MessageCircle size={20} />
+                                   </button>
+                               </div>
+                           </div>
+                           
+                           <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1">
+                                Screenshot for Instagram Stories <Instagram size={10} />
+                           </p>
+                       </div>
+
+                   </div>
+               )}
+           </div>
       )}
 
       {/* Partner Invite Modal Dialog */}

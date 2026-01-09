@@ -1,11 +1,11 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { JournalEntry, Circle, Insight, CircleStatus } from '../types';
+import { JournalEntry, Circle, Insight, CircleStatus, RelationshipForecast } from '../types';
 import EntryCard from '../components/EntryCard';
 import WeeklyReport from '../components/WeeklyReport';
-import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History } from 'lucide-react';
+import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History, CloudSun, CloudRain, Sun, Zap } from 'lucide-react';
 import { DAILY_PROMPTS } from '../constants';
-import { askBelluhAboutJournal, generateRelationshipSummary, detectPatterns } from '../services/geminiService';
+import { askBelluhAboutJournal, generateRelationshipForecast, detectPatterns } from '../services/geminiService';
 
 interface TimelineProps {
   entries: JournalEntry[];
@@ -29,8 +29,11 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchAnswer, setSearchAnswer] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [summaryResult, setSummaryResult] = useState<string | null>(null);
+  
+  // Forecast State (Thiel Upgrade: Predictive Intelligence)
+  const [forecast, setForecast] = useState<RelationshipForecast | null>(null);
+  const [isLoadingForecast, setIsLoadingForecast] = useState(false);
+
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [detectedPatterns, setDetectedPatterns] = useState<Insight[]>([]);
   const [selectedPattern, setSelectedPattern] = useState<Insight | null>(null);
@@ -44,6 +47,14 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     const runDetection = async () => {
         const patterns = await detectPatterns(entries);
         setDetectedPatterns(patterns);
+        
+        // Auto-generate forecast if we have enough data (Simulating "Always On" OS)
+        if (entries.length > 5) {
+            setIsLoadingForecast(true);
+            const data = await generateRelationshipForecast(entries);
+            setForecast(data);
+            setIsLoadingForecast(false);
+        }
     };
     runDetection();
   }, [entries]);
@@ -79,24 +90,23 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setIsSearching(true); setSearchAnswer(null);
-    setSummaryResult(null); // Clear previous summary when searching
     const answer = await askBelluhAboutJournal(searchQuery, entries);
     setSearchAnswer(answer); setIsSearching(false);
-  };
-
-  // handleSummarize implementation to generate relationship summary using Gemini
-  const handleSummarize = async () => {
-    setIsSummarizing(true);
-    setSummaryResult(null);
-    setSearchAnswer(null); // Clear previous search when summarizing
-    const summary = await generateRelationshipSummary(entries);
-    setSummaryResult(summary);
-    setIsSummarizing(false);
   };
 
   const handleAskAboutEntry = (content: string) => {
       setSearchQuery(`Pattern for: "${content.substring(0, 30)}..."`);
       handleSearchSubmit({ preventDefault: () => {} } as any);
+  };
+
+  const getWeatherIcon = (type?: string) => {
+      switch(type) {
+          case 'Stormy': return <CloudRain className="text-slate-500" />;
+          case 'Cloudy': return <CloudSun className="text-slate-400" />;
+          case 'Sunny': return <Sun className="text-amber-400" />;
+          case 'Clear Skies': return <Zap className="text-blue-400" />;
+          default: return <Sparkles className="text-belluh-300" />;
+      }
   };
 
   return (
@@ -125,7 +135,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                 {!isConstellation && (
                     <div className="flex items-center gap-2">
                          <button onClick={() => setShowWeeklyReport(true)} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-full text-xs font-semibold"><BarChart3 size={14} /><span className="hidden sm:inline">Our Report</span></button>
-                        <button onClick={handleSummarize} disabled={isSummarizing || isArchived} className="flex items-center gap-2 bg-transparent px-3 py-2 rounded-full text-xs font-semibold">{isSummarizing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={14} className="text-belluh-400" />}<span className="hidden sm:inline">Summarize</span></button>
                     </div>
                 )}
              </div>
@@ -140,25 +149,33 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                  </div>
              )}
 
+             {/* Thiel Upgrade: Predictive Forecast UI (Seamless Integration) */}
+             {forecast && !isConstellation && !isArchived && (
+                 <div className="mb-6 animate-scale-in">
+                     <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-float flex items-center gap-5 relative overflow-hidden">
+                         <div className="absolute top-0 left-0 w-1 h-full bg-[#f0addd]"></div>
+                         <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center shrink-0">
+                             {isLoadingForecast ? <Loader2 size={20} className="animate-spin text-slate-400" /> : getWeatherIcon(forecast.weather)}
+                         </div>
+                         <div>
+                             <div className="flex items-center gap-2 mb-1">
+                                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Belluh Forecast</span>
+                                 <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-bold">{forecast.velocity} Velocity</span>
+                             </div>
+                             <p className="text-sm font-serif text-slate-800 leading-snug">{forecast.forecast}</p>
+                         </div>
+                     </div>
+                 </div>
+             )}
+
              <form onSubmit={handleSearchSubmit} className={`relative bg-white rounded-3xl transition-all duration-300 flex items-center px-4 py-4 ${searchQuery ? 'shadow-2xl' : 'shadow-float'}`}>
                 <div className="mr-3">{isSearching ? <Loader2 size={18} className="animate-spin text-belluh-400" /> : <Sparkles size={18} className="text-belluh-300" />}</div>
                 <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Ask Belluh..." className="flex-1 bg-transparent text-[16px] focus:outline-none font-normal" />
-                {searchQuery && <button type="button" onClick={() => { setSearchQuery(''); setSearchAnswer(null); setSummaryResult(null); }}><X size={16} className="text-slate-400" /></button>}
+                {searchQuery && <button type="button" onClick={() => { setSearchQuery(''); setSearchAnswer(null); }}><X size={16} className="text-slate-400" /></button>}
              </form>
 
              {/* Search Result Display */}
              {searchAnswer && <div className="mt-4 animate-slide-up bg-white rounded-3xl p-8 shadow-2xl border border-slate-50 relative overflow-hidden"><div className="absolute top-0 left-0 w-1.5 h-full bg-belluh-300"></div><p className="text-slate-800 font-serif leading-loose text-lg">{searchAnswer}</p></div>}
-             
-             {/* Relationship Summary Result Display */}
-             {summaryResult && (
-                 <div className="mt-4 animate-slide-up bg-[#f8fdff] rounded-3xl p-8 shadow-2xl border border-cyan-50 relative overflow-hidden">
-                     <div className="absolute top-0 left-0 w-1.5 h-full bg-[#f0addd]"></div>
-                     <button onClick={() => setSummaryResult(null)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-500 transition-colors">
-                        <X size={16} />
-                     </button>
-                     <p className="text-slate-800 font-serif leading-loose text-lg">{summaryResult}</p>
-                 </div>
-             )}
           </div>
        </div>
        <div className="relative min-h-[400px]">
