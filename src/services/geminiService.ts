@@ -1,13 +1,13 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { JournalEntry, Insight, RelationshipArchetype, UserPersona } from "../types";
 
-// Helper to initialize AI client just-in-time to avoid race conditions with env vars
+// Helper to initialize AI client just-in-time
 const getAI = () => {
-  // Use process.env.API_KEY exclusively as per guidelines
+  // Configured via vite.config.ts define
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    console.error("Belluh AI Error: API Key is missing. Please set process.env.API_KEY.");
+    console.error("Belluh AI Error: API Key is missing. Please check your Vercel Environment Variables.");
   }
   return new GoogleGenAI({ apiKey: apiKey || '' });
 };
@@ -81,9 +81,9 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
       })
     );
 
-    // Add 20-second timeout to prevent hanging
+    // Add 15-second timeout to prevent hanging UI
     const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Transcription timed out")), 20000)
+        setTimeout(() => reject(new Error("Transcription timed out")), 15000)
     );
 
     const response = await Promise.race([aiPromise, timeoutPromise]);
@@ -155,7 +155,7 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
       })
     );
     
-    // Fix: Remove Markdown code blocks from JSON response if present
+    // Robust cleanup to ensure valid JSON parsing even if model returns markdown block
     const rawText = response.text || "[]";
     const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
     
@@ -217,7 +217,7 @@ export const getRelationshipArchetype = async (entryTexts: string[]): Promise<Re
       })
     );
     
-    // Fix: Remove Markdown code blocks from JSON response if present
+    // Cleanup
     const rawText = response.text || "{}";
     const cleanText = rawText.replace(/```json\n?|\n?```/g, '').trim();
     
