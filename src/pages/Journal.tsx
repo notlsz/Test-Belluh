@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { EntryType, Mood } from '../types';
 import { DAILY_PROMPTS, MOOD_EMOJIS } from '../constants';
@@ -23,6 +24,7 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
   
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // New state to track upload independently
   const [hasImage, setHasImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -39,14 +41,20 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Intelligent MIME type detection for cross-browser compatibility (Safari vs Chrome)
+      // Intelligent MIME type detection
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus' 
         : MediaRecorder.isTypeSupported('audio/mp4') 
             ? 'audio/mp4' 
-            : 'audio/webm'; // Fallback
-            
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+            : 'audio/webm';
+      
+      // Sam Altman Fix: Set lower bitrate (64kbps) for faster upload/transcription speed
+      const options: MediaRecorderOptions = { 
+          mimeType,
+          audioBitsPerSecond: 64000 
+      };
+
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -59,52 +67,52 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
       mediaRecorder.onstop = async () => {
         if (audioChunksRef.current.length === 0) return;
 
-        // Use the actual MIME type the browser decided to use
         const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
         const fileExt = finalMimeType.includes('mp4') ? 'mp4' : 'webm';
         
         const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
         const reader = new FileReader();
         
+        // Block interaction immediately
+        setIsTranscribing(true);
+        setIsUploading(true);
+
         reader.readAsDataURL(audioBlob);
         reader.onloadend = async () => {
             if (reader.result) {
                 const fullDataUrl = reader.result as string;
                 const base64Audio = fullDataUrl.split(',')[1];
                 
-                setIsTranscribing(true);
-                
-                try {
-                    // Parallelize Transcription and Upload for speed
-                    const transcriptionPromise = transcribeAudio(base64Audio, finalMimeType);
-                    
-                    const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                    const uploadPromise = supabase.storage
-                        .from('journal-media')
-                        .upload(fileName, audioBlob, {
-                            contentType: finalMimeType
-                        });
+                // 1. Kick off Transcription (Priority for User Feedback)
+                transcribeAudio(base64Audio, finalMimeType)
+                    .then(text => {
+                        setContent(prev => prev + (prev ? ' ' : '') + text);
+                    })
+                    .catch(err => {
+                        console.error("Transcription failed", err);
+                    })
+                    .finally(() => {
+                        setIsTranscribing(false); // Unblock text input ASAP
+                    });
 
-                    const [text, { data, error }] = await Promise.all([
-                        transcriptionPromise,
-                        uploadPromise
-                    ]);
-
-                    setContent(prev => prev + (prev ? ' ' : '') + text);
-
-                    if (!error && data) {
-                        const { data: publicUrlData } = supabase.storage
-                            .from('journal-media')
-                            .getPublicUrl(fileName);
-                        setAudioUrl(publicUrlData.publicUrl);
-                    } else {
-                        console.error('Upload failed:', error);
-                    }
-                } catch (err) {
-                    console.error("Error processing voice note:", err);
-                } finally {
-                    setIsTranscribing(false);
-                }
+                // 2. Kick off Upload (Background)
+                const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                supabase.storage
+                    .from('journal-media')
+                    .upload(fileName, audioBlob, { contentType: finalMimeType })
+                    .then(({ data, error }) => {
+                        if (!error && data) {
+                            const { data: publicUrlData } = supabase.storage
+                                .from('journal-media')
+                                .getPublicUrl(fileName);
+                            setAudioUrl(publicUrlData.publicUrl);
+                        } else {
+                            console.error('Upload failed:', error);
+                        }
+                    })
+                    .finally(() => {
+                        setIsUploading(false); // Unblock Next button
+                    });
             }
         };
       };
@@ -170,6 +178,8 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
        setStep('success');
   };
 
+  const isBusy = isTranscribing || isUploading;
+
   return (
     <div className="pb-32 pt-16 px-6 max-w-xl mx-auto h-full flex flex-col relative overflow-hidden">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
@@ -203,35 +213,41 @@ const Journal: React.FC<JournalProps> = ({ onAddEntry, partnerName, onTriggerPre
                             </button>
                         </div>
                     )}
-                    {audioUrl && !isRecording && (
+                    {/* Audio Status Indicator */}
+                    {(audioUrl || isUploading) && !isRecording && (
                         <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-slide-up">
                             <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center text-white">
-                                <Mic size={16} />
+                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
                             </div>
-                            <div className="flex-1 text-xs font-bold">Voice Note Recorded</div>
-                            <button onClick={handleDeleteAudio} className="p-2 text-slate-400 hover:text-red-400">
-                                <X size={16} />
-                            </button>
+                            <div className="flex-1 text-xs font-bold">
+                                {isUploading ? "Syncing Audio..." : "Voice Note Ready"}
+                            </div>
+                            {!isUploading && (
+                                <button onClick={handleDeleteAudio} className="p-2 text-slate-400 hover:text-red-400">
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder={isTranscribing ? "Processing audio..." : "Start typing..."}
-                    className="w-full bg-transparent text-slate-800 placeholder:text-slate-300 focus:outline-none resize-none font-serif text-xl leading-relaxed flex-1"
+                    placeholder={isTranscribing ? "Transcribing your thoughts..." : "Start typing..."}
+                    className="w-full bg-transparent text-slate-800 placeholder:text-slate-300 focus:outline-none resize-none font-serif text-xl leading-relaxed flex-1 transition-opacity duration-300"
+                    style={{ opacity: isTranscribing ? 0.5 : 1 }}
                     autoFocus
                     disabled={isTranscribing}
                 />
                 <div className="mt-auto pt-6 flex items-center justify-between">
                     <div className="flex gap-2">
-                         <button onClick={handleMicClick} disabled={isTranscribing} className={`h-12 px-5 rounded-full flex items-center gap-2 transition-all ${isRecording ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
+                         <button onClick={handleMicClick} disabled={isBusy} className={`h-12 px-5 rounded-full flex items-center gap-2 transition-all ${isRecording ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
                             {isRecording ? <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /> : (isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />)}
                         </button>
-                        {!isRecording && !isTranscribing && <button onClick={handleImageClick} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${hasImage ? 'bg-belluh-50 text-belluh-600' : 'bg-slate-50 text-slate-500'}`}><ImageIcon size={18} /></button>}
+                        {!isRecording && !isBusy && <button onClick={handleImageClick} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${hasImage ? 'bg-belluh-50 text-belluh-600' : 'bg-slate-50 text-slate-500'}`}><ImageIcon size={18} /></button>}
                     </div>
-                    {(content.trim() || hasImage || audioUrl) && !isRecording && !isTranscribing && (
-                        <button onClick={handleNext} disabled={isTranscribing} className="h-12 px-8 bg-slate-900 text-white rounded-full font-bold text-sm flex items-center gap-2">
+                    {(content.trim() || hasImage || audioUrl) && !isRecording && !isBusy && (
+                        <button onClick={handleNext} className="h-12 px-8 bg-slate-900 text-white rounded-full font-bold text-sm flex items-center gap-2">
                             <span>Next</span> <Send size={14} />
                         </button>
                     )}
