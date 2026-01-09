@@ -350,103 +350,104 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                        <p className="font-bold tracking-[0.2em] uppercase text-xs text-white/60">Calculations in progress...</p>
                    </div>
                ) : (
-                   <div className="flex flex-col items-center gap-6 animate-slide-up w-full max-w-[340px]" onClick={e => e.stopPropagation()}>
+                   <div className="flex flex-col items-center gap-6 animate-slide-up w-full max-w-[360px]" onClick={e => e.stopPropagation()}>
                        
-                       {/* THE RECEIPT CONTAINER */}
-                       {/* Enforce width 340px to ensure perfect 20px sawtooth division (340/20 = 17) */}
-                       <div className="w-[340px] relative shadow-2xl transition-all duration-500" style={{ filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.3))' }}>
-                            {/* Receipt Body */}
-                            <div 
-                                className={`relative w-full p-8 pb-12 transition-colors duration-500 ${currentColor.text}`}
-                                style={{ backgroundColor: currentColor.hex }}
-                            >
-                                {/* Jagged Top - Inverted Convex Bumps (Holes) */}
-                                <div className="absolute top-0 left-0 w-full h-3 -mt-3" 
-                                    style={{ 
-                                        background: `radial-gradient(circle at 10px 10px, ${currentColor.hex} 10px, transparent 10.5px)`,
-                                        backgroundSize: '20px 20px',
-                                        backgroundPosition: 'top center',
-                                        transform: 'rotate(180deg)'
-                                    }}
-                                ></div>
-
-                                {/* Content */}
-                                <div className="flex flex-col items-center mb-8 relative z-10">
-                                     <div className="w-12 h-12 border-2 border-current rounded-full flex items-center justify-center mb-4 opacity-80">
-                                         <Infinity size={24} />
-                                     </div>
-                                     <h2 className="font-mono text-xl font-bold uppercase tracking-widest text-center leading-tight mb-2">{receiptData.merchantName}</h2>
-                                     <p className="font-mono text-[10px] uppercase tracking-widest opacity-60">{receiptData.date} • {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                </div>
-
-                                <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
-
-                                <div className="space-y-4 font-mono text-xs mb-8">
-                                    {receiptData.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-start gap-4">
-                                            <div className="flex gap-2">
-                                                <span className="opacity-50">{item.qty}</span>
-                                                <span className="uppercase font-bold tracking-tight">{item.desc}</span>
-                                            </div>
-                                            <span className="font-bold whitespace-nowrap">{item.price}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
-
-                                <div className="space-y-2 font-mono text-xs mb-8">
-                                    <div className="flex justify-between">
-                                        <span className="opacity-60 uppercase">Subtotal</span>
-                                        <span>{receiptData.subtotal}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="opacity-60 uppercase">Emotional Tax</span>
-                                        <span>{receiptData.tax}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t border-dashed border-current border-opacity-30">
-                                        <span>TOTAL</span>
-                                        <span>{receiptData.total}</span>
-                                    </div>
-                                </div>
-
-                                <div className="text-center">
-                                    <p className="font-mono text-[10px] uppercase opacity-60 mb-6 max-w-[200px] mx-auto leading-relaxed">
-                                        "{receiptData.footerQuote}"
-                                    </p>
-                                    
-                                    {/* Simulated Barcode */}
-                                    <div className="h-10 w-4/5 mx-auto opacity-80 mix-blend-multiply" 
+                       {/* THE RECEIPT CONTAINER WITH SCROLL */}
+                       <div className="w-full max-h-[65vh] overflow-y-auto overflow-x-visible px-2 pb-4 pt-2">
+                           <div className="w-[340px] relative shadow-2xl transition-all duration-500 mx-auto" style={{ filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.3))' }}>
+                                {/* Receipt Body */}
+                                <div 
+                                    className={`relative w-full p-8 pb-12 transition-colors duration-500 ${currentColor.text}`}
+                                    style={{ backgroundColor: currentColor.hex }}
+                                >
+                                    {/* Jagged Top - Inverted Convex Bumps (Holes) */}
+                                    <div className="absolute top-0 left-0 w-full h-3 -mt-3" 
                                         style={{ 
-                                            background: `repeating-linear-gradient(90deg, 
-                                                currentColor 0px, currentColor 2px, 
-                                                transparent 2px, transparent 4px, 
-                                                currentColor 4px, currentColor 5px, 
-                                                transparent 5px, transparent 8px,
-                                                currentColor 8px, currentColor 11px,
-                                                transparent 11px, transparent 12px
-                                            )` 
-                                        }}>
+                                            background: `radial-gradient(circle at 10px 10px, ${currentColor.hex} 10px, transparent 10.5px)`,
+                                            backgroundSize: '20px 20px',
+                                            backgroundPosition: 'top center',
+                                            transform: 'rotate(180deg)'
+                                        }}
+                                    ></div>
+
+                                    {/* Content */}
+                                    <div className="flex flex-col items-center mb-8 relative z-10">
+                                         <div className="w-12 h-12 border-2 border-current rounded-full flex items-center justify-center mb-4 opacity-80">
+                                             <Infinity size={24} />
+                                         </div>
+                                         <h2 className="font-mono text-xl font-bold uppercase tracking-widest text-center leading-tight mb-2">{receiptData.merchantName}</h2>
+                                         <p className="font-mono text-[10px] uppercase tracking-widest opacity-60">{receiptData.date} • {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                     </div>
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.3em] mt-2 opacity-40">Thank You For Shopping</p>
+
+                                    <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
+
+                                    <div className="space-y-4 font-mono text-xs mb-8">
+                                        {receiptData.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-start gap-4">
+                                                <div className="flex gap-2">
+                                                    <span className="opacity-50">{item.qty}</span>
+                                                    <span className="uppercase font-bold tracking-tight">{item.desc}</span>
+                                                </div>
+                                                <span className="font-bold whitespace-nowrap">{item.price}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="border-b border-dashed border-current opacity-30 mb-6"></div>
+
+                                    <div className="space-y-2 font-mono text-xs mb-8">
+                                        <div className="flex justify-between">
+                                            <span className="opacity-60 uppercase">Subtotal</span>
+                                            <span>{receiptData.subtotal}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="opacity-60 uppercase">Emotional Tax</span>
+                                            <span>{receiptData.tax}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t border-dashed border-current border-opacity-30">
+                                            <span>TOTAL</span>
+                                            <span>{receiptData.total}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center">
+                                        <p className="font-mono text-[10px] uppercase opacity-60 mb-6 max-w-[200px] mx-auto leading-relaxed">
+                                            "{receiptData.footerQuote}"
+                                        </p>
+                                        
+                                        {/* Simulated Barcode */}
+                                        <div className="h-10 w-4/5 mx-auto opacity-80 mix-blend-multiply" 
+                                            style={{ 
+                                                background: `repeating-linear-gradient(90deg, 
+                                                    currentColor 0px, currentColor 2px, 
+                                                    transparent 2px, transparent 4px, 
+                                                    currentColor 4px, currentColor 5px, 
+                                                    transparent 5px, transparent 8px,
+                                                    currentColor 8px, currentColor 11px,
+                                                    transparent 11px, transparent 12px
+                                                )` 
+                                            }}>
+                                        </div>
+                                        <p className="font-mono text-[8px] uppercase tracking-[0.3em] mt-2 opacity-40">Thank You For Shopping</p>
+                                    </div>
+
+                                    {/* Paper Texture Overlay */}
+                                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+
+                                    {/* Jagged Bottom - Convex Bumps */}
+                                    <div className="absolute bottom-0 left-0 w-full h-3 -mb-3" 
+                                        style={{ 
+                                            background: `radial-gradient(circle at 10px 0, ${currentColor.hex} 10px, transparent 10.5px)`,
+                                            backgroundSize: '20px 10px',
+                                            backgroundRepeat: 'repeat-x',
+                                        }}
+                                    ></div>
                                 </div>
-
-                                {/* Paper Texture Overlay */}
-                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-
-                                {/* Jagged Bottom - Convex Bumps */}
-                                <div className="absolute bottom-0 left-0 w-full h-3 -mb-3" 
-                                    style={{ 
-                                        background: `radial-gradient(circle at 10px 0, ${currentColor.hex} 10px, transparent 10.5px)`,
-                                        backgroundSize: '20px 10px',
-                                        backgroundRepeat: 'repeat-x',
-                                    }}
-                                ></div>
-                            </div>
+                           </div>
                        </div>
                        
                        {/* Controls UI - The "Share & Customize" Center */}
-                       <div className="flex flex-col items-center gap-6 w-full animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                       <div className="flex flex-col items-center gap-6 w-full animate-fade-in shrink-0" style={{ animationDelay: '0.2s' }}>
                            
                            {/* Color Picker */}
                            <div className="flex gap-3 bg-white/10 backdrop-blur-md p-2 rounded-full border border-white/20 overflow-x-auto max-w-full">
