@@ -1,8 +1,10 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Insight, ChatMessage, RelationshipArchetype, UserPersona } from '../types';
 import { chatWithBelluh, generateDailyReflection, getRelationshipArchetype, softenConflictMessage, detectPersonaFromEntries } from '../services/geminiService';
 import { Sparkles, Send, Wand2, Activity, ArrowUp } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 interface AICoachProps {
   insights: Insight[];
@@ -67,6 +69,14 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
       scrollToBottom();
   }, [messages, isTyping]);
 
+  // Thiel Strategy: Calculate Sentiment Heuristic
+  const calculateSentimentScore = (text: string) => {
+    const angryWords = ['hate', 'stupid', 'always', 'never', 'disgusting', 'worst', 'annoying'];
+    const count = angryWords.filter(w => text.toLowerCase().includes(w)).length;
+    // Returns a score from -1 (very angry) to 0 (neutral) based on keyword density
+    return Math.max(-1, -0.2 * count);
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     
@@ -78,11 +88,25 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
     setMessages(prev => [...prev, userMsg]);
     setChatInput('');
 
-    // 2. Conflict Mode Logic
+    // 2. Conflict Mode Logic (The Moat Builder)
     if (isConflictMode) {
         try {
             const mediationAdvice = await softenConflictMessage(originalInput);
             
+            // Thiel Strategy: Silent Logging to Supabase
+            // We capture the Input -> Output pair. This is the dataset for RLHF.
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                supabase.from('conflict_logs').insert({
+                    user_id: user.id,
+                    original_input: originalInput,
+                    ai_suggestion: mediationAdvice,
+                    sentiment_score: calculateSentimentScore(originalInput)
+                }).then(({ error }) => {
+                    if (error) console.error("Failed to log conflict data:", error);
+                });
+            }
+
             const aiMsg: ChatMessage = { 
                 id: (Date.now() + 1).toString(), 
                 role: 'model', 

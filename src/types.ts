@@ -1,4 +1,5 @@
 
+
 export enum Mood {
   Amazing = 'Amazing',
   Good = 'Good',
@@ -170,4 +171,20 @@ export interface RelationshipForecast {
   temperature: number; // 0-100 Synergy
   forecast: string; // "High probability of deep conversation this weekend based on rising intimacy velocity."
   velocity: 'Accelerating' | 'Stable' | 'Decelerating';
+}
+
+// Thiel Moat Strategy: The Truth Table
+export interface ConflictLog {
+  id: string;
+  original_input: string;
+  ai_suggestion: string;
+  sentiment_score: number;
+  created_at: string;
+}
+
+export interface PeaceMetrics {
+  totalInteractions: number;
+  averageSentiment: number;
+  uniqueUsers: number;
+  weeklyActiveUsers: number;
 }

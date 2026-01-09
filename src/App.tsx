@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import TabBar from './components/TabBar';
 import Journal from './pages/Journal';
@@ -8,12 +9,14 @@ import Onboarding from './pages/Onboarding';
 import Auth from './pages/Auth';
 import LandingPage from './pages/LandingPage';
 import About from './pages/About';
+import AdminMetrics from './pages/AdminMetrics';
 import LegalModal from './components/LegalModal';
 import ArtifactModal from './components/ArtifactModal';
 import { CURRENT_USER, MOCK_INSIGHTS } from './constants';
 import { JournalEntry, EntryType, Mood, User, CircleType, CircleStatus } from './types';
 import { Sparkles, X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
+import { useAdminAccess } from './hooks/useAdminAccess';
 
 // Toast Component
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
@@ -103,6 +106,9 @@ const App: React.FC = () => {
   
   // Artifact Modal State
   const [artifactModalOpen, setArtifactModalOpen] = useState<'reel' | 'letter' | null>(null);
+
+  // STEALTH ADMIN ACCESS HOOK
+  const { showAdmin, setShowAdmin, isUserAdmin } = useAdminAccess(user.id);
 
   // --- Auth Helpers ---
 
@@ -281,7 +287,6 @@ const App: React.FC = () => {
                 
                 // Determine Author Name/Avatar
                 // If it's mine, use my profile. If not, look in connected profiles (only if we fetched them previously, otherwise fallback)
-                // Note: In a real app we'd have a map of profiles. Here we rely on partnerProfile mainly or generic fallback.
                 
                 let authorName = 'Unknown';
                 let authorAvatar = '';
@@ -294,10 +299,6 @@ const App: React.FC = () => {
                         authorName = partnerProfile.full_name;
                         authorAvatar = partnerProfile.avatar_url;
                     } else {
-                        // It's another friend/connection - we didn't store them in a map above, let's just use a placeholder or basic logic
-                        // Ideally we would have fetched ALL profiles in step 2.
-                        // For this implementation, we will assume "Partner" if not me, or try to infer.
-                        // To do this right:
                         authorName = 'Friend'; 
                         authorAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + e.user_id;
                     }
@@ -346,6 +347,7 @@ const App: React.FC = () => {
             partnerAvatar: partnerProfile?.avatar_url || undefined,
             circles: newCircles as any,
             activeCircleId: 'c1',
+            isPremium: false,
             settings: CURRENT_USER.settings,
             hasCompletedOnboarding: !!displayPartnerName
         }));
@@ -357,7 +359,6 @@ const App: React.FC = () => {
         }
 
         setIsAuthenticated(true);
-        setAuthView('landing');
       } catch (err) {
           console.error("Failed to load user data", err);
           // Don't reset state here, just stop loading to allow retry or show error
@@ -389,8 +390,6 @@ const App: React.FC = () => {
             } else if (event === 'SIGNED_OUT') {
                 if (mounted) resetUserState();
             }
-            // Note: We deliberately handle 'INITIAL_SESSION' via the manual getSession check above 
-            // to prevent race conditions or null flashes.
         });
 
         return () => subscription.unsubscribe();
@@ -741,6 +740,12 @@ const App: React.FC = () => {
               </div>
           </div>
       );
+  }
+
+  // Admin Overlay (Stealth Mode)
+  // This renders ON TOP of everything else if active, instead of as a route.
+  if (showAdmin && isUserAdmin) {
+      return <AdminMetrics onBack={() => setShowAdmin(false)} />;
   }
 
   if (!isAuthenticated) {
