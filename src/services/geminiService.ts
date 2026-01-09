@@ -14,7 +14,13 @@ const getAI = () => {
 
 // Helper to handle errors gracefully
 const handleGeminiError = (error: any, fallback: any) => {
-  console.error("Gemini API Error:", error);
+  const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED");
+  
+  if (isRateLimit) {
+    console.warn("Belluh AI: Rate limit exceeded. Using fallback data for this request.");
+  } else {
+    console.error("Gemini API Error:", error);
+  }
   return fallback;
 };
 
@@ -23,11 +29,15 @@ async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay
   try {
     return await operation();
   } catch (error: any) {
-    const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429");
-    if (retries > 0) {
-      const waitTime = isRateLimit ? delay * 2 : delay;
+    const isRateLimit = error?.status === 429 || error?.code === 429 || error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED");
+    const isServerSide = error?.status >= 500;
+
+    if ((isRateLimit || isServerSide) && retries > 0) {
+      // Exponential backoff: 2s -> 4s -> 8s with jitter
+      const waitTime = delay * 2 + Math.floor(Math.random() * 500); 
+      // console.debug(`Belluh AI: Retrying operation in ${waitTime}ms... (${retries} attempts left)`);
       await new Promise(r => setTimeout(r, waitTime));
-      return retryOperation(operation, retries - 1, waitTime * 1.5);
+      return retryOperation(operation, retries - 1, waitTime);
     }
     throw error;
   }
@@ -161,7 +171,6 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
     
     return JSON.parse(cleanText);
   } catch (e) {
-    console.error("Pattern detection failed:", e);
     return handleGeminiError(e, []);
   }
 };
