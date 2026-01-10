@@ -469,7 +469,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                </div>
 
                <div className="text-xs text-slate-400 font-bold tracking-wide">
-                   © 2025 Belluh Inc.
+                   © 2026 Belluh Inc.
                </div>
           </div>
       </footer>
