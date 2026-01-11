@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -158,6 +158,16 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           } else {
               handleShare('copy');
           }
+      }
+  };
+
+  const handleCopyInviteLink = async () => {
+      const inviteUrl = `${window.location.origin}?invite=${user.id}`;
+      try {
+          await navigator.clipboard.writeText(inviteUrl);
+          onShowToast("Invite link copied!", "success");
+      } catch (err) {
+          onShowToast("Failed to copy link.", "error");
       }
   };
 
@@ -339,7 +349,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           </div>
       )}
 
-      {/* High-Fidelity Receipt Modal */}
+      {/* ... (Receipt Modal) ... */}
       {showReceipt && (
            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowReceipt(false)}>
                {generatingReceipt || !receiptData ? (
@@ -502,7 +512,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                     <h3 className="font-serif text-2xl text-slate-900">Invite Partner</h3>
                     <button onClick={() => setShowInviteModal(false)}><X size={20} className="text-slate-400"/></button>
                   </div>
-                  <p className="text-slate-500 text-sm mb-6">Invite someone to this circle via email. They must have a Belluh account.</p>
+                  <p className="text-slate-500 text-sm mb-6">Share a link or invite via email to connect your journals.</p>
                   
                   {inviteStatus === 'sent' ? (
                       <div className="text-center py-6 animate-pop">
@@ -510,21 +520,39 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           <p className="font-bold text-slate-900">Invite Sent!</p>
                       </div>
                   ) : (
-                      <form onSubmit={handleInviteSubmit} className="space-y-4">
-                          <input 
-                              type="email" 
-                              required 
-                              autoFocus
-                              value={inviteEmail}
-                              onChange={e => setInviteEmail(e.target.value)}
-                              placeholder="partner@email.com"
-                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
-                          />
-                          {inviteStatus === 'not-found' && <p className="text-rose-500 text-xs font-bold px-1">User not found. Ask them to sign up first!</p>}
-                          <button type="submit" disabled={inviteStatus === 'searching'} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
-                              {inviteStatus === 'searching' ? <Loader2 size={18} className="animate-spin" /> : <><span>Send Invite</span> <Send size={16} /></>}
+                      <div className="space-y-6">
+                          <button 
+                            onClick={handleCopyInviteLink}
+                            className="w-full bg-belluh-50 text-belluh-600 border border-belluh-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-belluh-100 transition-all"
+                          >
+                              <LinkIcon size={16} />
+                              <span>Copy Invite Link</span>
                           </button>
-                      </form>
+
+                          <div className="relative">
+                              <div className="absolute inset-0 flex items-center">
+                                  <div className="w-full border-t border-slate-100"></div>
+                              </div>
+                              <div className="relative flex justify-center text-xs">
+                                  <span className="bg-white px-2 text-slate-400 font-medium">OR VIA EMAIL</span>
+                              </div>
+                          </div>
+
+                          <form onSubmit={handleInviteSubmit} className="space-y-4">
+                              <input 
+                                  type="email" 
+                                  required 
+                                  value={inviteEmail}
+                                  onChange={e => setInviteEmail(e.target.value)}
+                                  placeholder="partner@email.com"
+                                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
+                              />
+                              {inviteStatus === 'not-found' && <p className="text-rose-500 text-xs font-bold px-1">User not found. Send them the link instead!</p>}
+                              <button type="submit" disabled={inviteStatus === 'searching'} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
+                                  {inviteStatus === 'searching' ? <Loader2 size={18} className="animate-spin" /> : <><span>Send Invite</span> <Send size={16} /></>}
+                              </button>
+                          </form>
+                      </div>
                   )}
               </div>
           </div>

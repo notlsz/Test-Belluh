@@ -134,6 +134,28 @@ const App: React.FC = () => {
 
   const loadUserData = async (sessionUser: any) => {
       try {
+        // --- HANDLE INVITE LINKS ---
+        // Check for ?invite=USER_ID in URL
+        const params = new URLSearchParams(window.location.search);
+        const inviteId = params.get('invite');
+        if (inviteId && inviteId !== sessionUser.id) {
+            // Check if connection already exists
+            const { data: existing } = await supabase.from('partner_connections').select('*')
+                .or(`and(user_id.eq.${inviteId},partner_id.eq.${sessionUser.id}),and(user_id.eq.${sessionUser.id},partner_id.eq.${inviteId})`);
+            
+            if (!existing || existing.length === 0) {
+                // Insert new pending invite (inviteId invited sessionUser)
+                await supabase.from('partner_connections').insert({
+                    user_id: inviteId,
+                    partner_id: sessionUser.id,
+                    status: 'pending'
+                });
+                showNotification("Invite received! Check your profile.", "success");
+            }
+            // Clean URL
+            window.history.replaceState({}, document.title, "/");
+        }
+
         // 1. Fetch User Profile
         const { data: profile } = await supabase
             .from('profiles')

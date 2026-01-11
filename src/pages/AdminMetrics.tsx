@@ -19,7 +19,27 @@ const AdminMetrics: React.FC<AdminMetricsProps> = ({ onBack }) => {
         weeklyActiveUsers: 0
     });
 
+    // Helper to calculate stats from logs
+    const calculateStats = (currentLogs: ConflictLog[]) => {
+        const uniqueUsers = new Set(currentLogs.map((l: any) => l.user_id)).size;
+        const sentimentSum = currentLogs.reduce((acc: number, l: any) => acc + (l.sentiment_score || 0), 0);
+        const avgSentiment = currentLogs.length > 0 ? (sentimentSum / currentLogs.length) : 0;
+        
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const thisWeekCount = currentLogs.filter((l: any) => new Date(l.created_at) > oneWeekAgo).length;
+
+        return {
+            totalInteractions: currentLogs.length,
+            averageSentiment: parseFloat(avgSentiment.toFixed(2)),
+            uniqueUsers,
+            weeklyActiveUsers: thisWeekCount
+        };
+    };
+
     useEffect(() => {
+        let channel: any;
+
         const fetchMetrics = async () => {
             // REDUNDANT SECURITY CHECK: Verify Admin ID before even attempting network request
             const { data: { user } } = await supabase.auth.getUser();
@@ -29,7 +49,7 @@ const AdminMetrics: React.FC<AdminMetricsProps> = ({ onBack }) => {
                 return;
             }
 
-            // 1. Fetch Logs (Limit 100 for now)
+            // 1. Fetch Initial Logs (Limit 100 for now)
             const { data, error } = await supabase
                 .from('conflict_logs')
                 .select('*')
@@ -37,30 +57,38 @@ const AdminMetrics: React.FC<AdminMetricsProps> = ({ onBack }) => {
                 .limit(100);
 
             if (data) {
-                // @ts-ignore - Supabase types might not be perfectly inferred yet
+                // @ts-ignore
                 setLogs(data);
-
-                // 2. Compute Stats
-                const uniqueUsers = new Set(data.map((l: any) => l.user_id)).size;
-                const sentimentSum = data.reduce((acc: number, l: any) => acc + (l.sentiment_score || 0), 0);
-                const avgSentiment = data.length > 0 ? (sentimentSum / data.length) : 0;
-                
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                const thisWeekCount = data.filter((l: any) => new Date(l.created_at) > oneWeekAgo).length;
-
-                setStats({
-                    totalInteractions: data.length,
-                    averageSentiment: parseFloat(avgSentiment.toFixed(2)),
-                    uniqueUsers,
-                    weeklyActiveUsers: thisWeekCount // Using weekly conflict logs as proxy for now
-                });
+                setStats(calculateStats(data));
             } else if (error) {
                 console.error("Admin fetch error (likely RLS):", error);
             }
             setLoading(false);
+
+            // 2. Subscribe to Realtime Updates
+            channel = supabase
+                .channel('admin-conflict-logs')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'conflict_logs' },
+                    (payload) => {
+                        const newLog = payload.new as ConflictLog;
+                        setLogs(prevLogs => {
+                            const updatedLogs = [newLog, ...prevLogs];
+                            // Update stats locally to reflect the new log immediately
+                            setStats(calculateStats(updatedLogs));
+                            return updatedLogs;
+                        });
+                    }
+                )
+                .subscribe();
         };
+
         fetchMetrics();
+
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+        };
     }, []);
 
     if (loading) {
@@ -74,7 +102,10 @@ const AdminMetrics: React.FC<AdminMetricsProps> = ({ onBack }) => {
                     <ArrowLeft size={14} /> Back to App
                 </button>
 
-                <h1 className="text-3xl font-serif font-bold mb-2">Conflict Mediator Metrics</h1>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <h1 className="text-3xl font-serif font-bold">Conflict Mediator Metrics</h1>
+                </div>
                 <p className="text-slate-500 mb-10">Real-time telemetry on conflict resolution usage.</p>
 
                 {/* Metrics Grid */}
@@ -126,7 +157,7 @@ const AdminMetrics: React.FC<AdminMetricsProps> = ({ onBack }) => {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {logs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-slate-50/50">
+                                    <tr key={log.id} className="hover:bg-slate-50/50 animate-fade-in">
                                         <td className="px-6 py-4 text-slate-400 whitespace-nowrap text-xs">
                                             {new Date(log.created_at).toLocaleDateString()} {new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         </td>
