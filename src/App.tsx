@@ -17,6 +17,7 @@ import { JournalEntry, EntryType, Mood, User, CircleType, CircleStatus } from '.
 import { Sparkles, X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { useAdminAccess } from './hooks/useAdminAccess';
+import { trackEvent } from './services/analytics';
 
 // Toast Component
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
@@ -134,6 +135,8 @@ const App: React.FC = () => {
 
   const loadUserData = async (sessionUser: any) => {
       try {
+        trackEvent('app_opened', { source: 'web' });
+
         // --- HANDLE INVITE LINKS ---
         // Check for ?invite=USER_ID in URL
         const params = new URLSearchParams(window.location.search);
@@ -151,6 +154,7 @@ const App: React.FC = () => {
                     status: 'pending'
                 });
                 showNotification("Invite received! Check your profile.", "success");
+                trackEvent('invite_received', { inviter_id: inviteId });
             }
             // Clean URL
             window.history.replaceState({}, document.title, "/");
@@ -434,6 +438,7 @@ const App: React.FC = () => {
   }, [entries, user.id, user.activeCircleId]);
 
   const handleTriggerPremium = () => {
+    trackEvent('premium_trigger_clicked');
     setShowPremiumOverlay(true);
   };
 
@@ -443,6 +448,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
       try {
+        trackEvent('logout');
         await supabase.auth.signOut();
         showNotification('Logged out successfully', 'success');
       } catch (error) {
@@ -491,6 +497,8 @@ const App: React.FC = () => {
   const handleOnboardingComplete = async (partnerName: string, firstEntry: string) => {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) return;
+
+    trackEvent('onboarding_completed');
 
     const { error: profileError } = await supabase
         .from('profiles')
@@ -563,6 +571,8 @@ const App: React.FC = () => {
               return;
           }
           
+          trackEvent('profile_updated');
+
           // Dynamic Circle Renaming Logic
           const myNewName = (data.full_name || user.name).split(' ')[0];
           const partnerName = user.partnerName ? user.partnerName.split(' ')[0] : 'Partner';
@@ -603,6 +613,7 @@ const App: React.FC = () => {
       }]).select().single();
 
       if (data && !error) {
+          trackEvent('circle_created', { circle_name: name });
           const newCircle: any = {
               id: data.id,
               name: name,
@@ -634,6 +645,7 @@ const App: React.FC = () => {
       if (error) {
           showNotification('Failed to accept invite', 'error');
       } else {
+          trackEvent('invite_accepted');
           showNotification('Invite accepted! Refreshing...', 'success');
           window.location.reload(); 
       }
@@ -679,6 +691,7 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('journal_entries').insert([newEntryPayload]).select().single();
 
     if (data && !error) {
+         trackEvent('journal_entry_created', { type, mood, has_media: !!mediaUrl || !!audioUrl });
          const newEntry: JournalEntry = {
             id: data.id,
             userId: currentUser.id,
@@ -733,6 +746,7 @@ const App: React.FC = () => {
     if (!entry) return;
 
     const newLikedState = !entry.isLiked;
+    if (newLikedState) trackEvent('entry_liked');
     
     setEntries(prevEntries => prevEntries.map(e => {
       if (e.id === entryId) {
@@ -897,7 +911,10 @@ const App: React.FC = () => {
 
       <TabBar 
         currentTab={currentTab} 
-        onTabChange={setCurrentTab} 
+        onTabChange={(tab) => {
+            trackEvent('tab_changed', { tab });
+            setCurrentTab(tab);
+        }} 
         onCompose={() => handleCompose()} 
       />
 

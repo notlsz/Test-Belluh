@@ -6,6 +6,7 @@ import WeeklyReport from '../components/WeeklyReport';
 import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History, CloudSun, CloudRain, Sun, Zap } from 'lucide-react';
 import { DAILY_PROMPTS } from '../constants';
 import { askBelluhAboutJournal, generateRelationshipForecast, detectPatterns } from '../services/geminiService';
+import { trackEvent } from '../services/analytics';
 
 interface TimelineProps {
   entries: JournalEntry[];
@@ -90,6 +91,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setIsSearching(true); setSearchAnswer(null);
+    trackEvent('timeline_search', { query_length: searchQuery.length });
     const answer = await askBelluhAboutJournal(searchQuery, entries);
     setSearchAnswer(answer); setIsSearching(false);
   };
@@ -118,6 +120,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
              onTryRitual={(prompt) => {
                  onCompose(prompt);
                  setShowWeeklyReport(false);
+                 trackEvent('report_ritual_accepted');
              }} 
              entries={entries}
            />
@@ -134,7 +137,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                 </button>
                 {!isConstellation && (
                     <div className="flex items-center gap-2">
-                         <button onClick={() => setShowWeeklyReport(true)} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-full text-xs font-semibold"><BarChart3 size={14} /><span className="hidden sm:inline">Our Report</span></button>
+                         <button onClick={() => { setShowWeeklyReport(true); trackEvent('weekly_report_opened'); }} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-full text-xs font-semibold"><BarChart3 size={14} /><span className="hidden sm:inline">Our Report</span></button>
                     </div>
                 )}
              </div>
@@ -142,9 +145,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
              {/* Dropdown for Circle Selection */}
              {isCircleMenuOpen && (
                  <div className="absolute top-20 left-6 bg-white border border-slate-100 shadow-xl rounded-2xl p-2 z-50 animate-pop">
-                     <button onClick={() => { onCircleChange('constellation'); setIsCircleMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${isConstellation ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>My Constellation</button>
+                     <button onClick={() => { onCircleChange('constellation'); setIsCircleMenuOpen(false); trackEvent('circle_switched', { circle: 'constellation' }); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${isConstellation ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>My Constellation</button>
                      {circles.map(c => (
-                         <button key={c.id} onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${activeCircleId === c.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>{c.name}</button>
+                         <button key={c.id} onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); trackEvent('circle_switched', { circle: c.type }); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${activeCircleId === c.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>{c.name}</button>
                      ))}
                  </div>
              )}

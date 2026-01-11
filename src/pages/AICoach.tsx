@@ -1,10 +1,10 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Insight, ChatMessage, RelationshipArchetype, UserPersona } from '../types';
 import { chatWithBelluh, generateDailyReflection, getRelationshipArchetype, softenConflictMessage, detectPersonaFromEntries } from '../services/geminiService';
 import { Sparkles, Send, Wand2, Activity, ArrowUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { trackEvent } from '../services/analytics';
 
 interface AICoachProps {
   insights: Insight[];
@@ -90,6 +90,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
 
     // 2. Conflict Mode Logic (The Moat Builder)
     if (isConflictMode) {
+        trackEvent('conflict_mode_used', { input_length: originalInput.length });
         try {
             const mediationAdvice = await softenConflictMessage(originalInput);
             
@@ -124,6 +125,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
     }
 
     // 3. Normal Chat Logic
+    trackEvent('chat_message_sent', { persona: detectedPersona });
     const historyForAI = messages.map(m => ({ role: m.role, text: m.text }));
     const aiResponseText = await chatWithBelluh(originalInput, historyForAI, detectedPersona);
     

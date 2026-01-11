@@ -188,3 +188,11 @@ export interface PeaceMetrics {
   uniqueUsers: number;
   weeklyActiveUsers: number;
 }
+
+export interface AnalyticsEvent {
+  id: string;
+  user_id: string;
+  event_name: string;
+  properties: any;
+  created_at: string;
+}
