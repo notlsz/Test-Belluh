@@ -396,35 +396,32 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
-        // 1. Immediate Session Check (try local storage first)
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-            if (mounted) await loadUserData(session.user);
-        } else {
-             // Do not reset immediately if we suspect a race condition with subscription
-             // But usually it's safe to assume no session if getSession returns null
-             if (mounted) resetUserState();
-        }
-
-        // 2. Auth State Listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-                if (session?.user && mounted) {
-                    await loadUserData(session.user);
-                }
-            } else if (event === 'SIGNED_OUT') {
-                if (mounted) resetUserState();
+    // Listen for changes (Login, Logout, Token Refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (session?.user && mounted) {
+                // Ensure we only load if not already authenticated to prevent double loads
+                // But allow reloading if session changed drastically
+                loadUserData(session.user);
             }
-        });
+        } else if (event === 'SIGNED_OUT') {
+            if (mounted) resetUserState();
+        }
+    });
 
-        return () => subscription.unsubscribe();
+    // Initial Session Check from Local Storage
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+            if (mounted) loadUserData(session.user);
+        } else {
+            if (mounted) setIsLoading(false); // Stop loading if no session found
+        }
+    });
+
+    return () => { 
+        mounted = false;
+        subscription.unsubscribe();
     };
-
-    initialize();
-
-    return () => { mounted = false; };
   }, []);
 
   const partnerHasEntry = useMemo(() => {
