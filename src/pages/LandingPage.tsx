@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, ArrowRight, Activity, TrendingUp, Lock, Fingerprint, Menu, X, Heart } from 'lucide-react';
 import { ORGANIZATIONS } from '../constants';
@@ -442,8 +443,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onShow
                   "It feels like a therapist and a best friend combined. It saved our communication."
               </blockquote>
               <div className="flex items-center justify-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-full overflow-hidden p-1 shadow-md border border-white flex items-center justify-center bg-slate-100">
-                      <span className="text-slate-400 font-bold text-xs">U</span>
+                  <div className="w-12 h-12 bg-white rounded-full overflow-hidden shadow-md border border-white">
+                      <img 
+                        src="https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=100&q=80" 
+                        alt="Sarah & Tom" 
+                        className="w-full h-full object-cover"
+                      />
                   </div>
                   <div className="text-left">
                       <div className="text-sm font-bold text-slate-900">Sarah & Tom</div>
