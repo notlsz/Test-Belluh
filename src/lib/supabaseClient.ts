@@ -9,4 +9,10 @@ if (!supabaseUrl) {
   console.error("Supabase URL is missing. The app may crash.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});

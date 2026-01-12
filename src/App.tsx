@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import TabBar from './components/TabBar';
 import Journal from './pages/Journal';
@@ -398,18 +397,20 @@ const App: React.FC = () => {
     let mounted = true;
 
     const initialize = async () => {
-        // 1. Immediate Session Check
+        // 1. Immediate Session Check (try local storage first)
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
             if (mounted) await loadUserData(session.user);
         } else {
-            if (mounted) resetUserState();
+             // Do not reset immediately if we suspect a race condition with subscription
+             // But usually it's safe to assume no session if getSession returns null
+             if (mounted) resetUserState();
         }
 
         // 2. Auth State Listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 if (session?.user && mounted) {
                     await loadUserData(session.user);
                 }
