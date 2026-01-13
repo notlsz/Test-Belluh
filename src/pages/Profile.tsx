@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -92,6 +92,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const activeCircles = user.circles.filter(c => c.status === CircleStatus.Active);
   const archivedCircles = user.circles.filter(c => c.status === CircleStatus.Archived);
 
+  // Statistics Calculations
   const synergyScore = useMemo(() => {
       if (entries.length === 0) return 85; 
       const recentEntries = entries.slice(0, 15);
@@ -103,6 +104,32 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       });
       return Math.min(100, Math.max(0, score));
   }, [entries]);
+
+  const totalMemoriesUs = entries.length;
+  const totalMemoriesMe = entries.filter(e => e.userId === user.id).length;
+
+  const relationshipFacts = useMemo(() => {
+      if (!activeCircle || !activeCircle.startDate) return null;
+      
+      const start = new Date(activeCircle.startDate);
+      const now = new Date();
+      const daysTogether = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const nextAnniversary = new Date(start);
+      nextAnniversary.setFullYear(now.getFullYear());
+      if (nextAnniversary < now) nextAnniversary.setFullYear(now.getFullYear() + 1);
+      const daysUntilAnniversary = Math.ceil((nextAnniversary.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Mocking/Using Start Date for other facts since we don't store them yet
+      return {
+          firstMet: start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          firstKiss: new Date(start.getTime() + 86400000 * 3).toLocaleDateString(), // Mock: 3 days after
+          firstDate: start.toLocaleDateString(),
+          daysTogether,
+          daysUntilAnniversary,
+          daysUntilBirthday: 42 // Mock
+      };
+  }, [activeCircle]);
 
   const pulseStatus = synergyScore >= 80 ? { text: "Deeply Connected", color: "text-[#f0addd]" } : { text: "Steady Growth", color: "text-slate-600" };
 
@@ -328,12 +355,47 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           <div className="mt-8 flex flex-wrap justify-center gap-3">
                                 <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Flame size={14} className="text-orange-500 fill-orange-500" /><span className="text-xs font-bold">{streak} Day Streak</span></div>
                                 <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Activity size={14} className="text-[#f0addd]" /><span className="text-xs font-bold">{synergyScore}% Synergy</span></div>
+                                <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Trophy size={14} className="text-yellow-500" /><span className="text-xs font-bold">{totalMemoriesUs} Memories</span></div>
                           </div>
                       </div>
+                      
                       <div className="text-center mt-12 mb-12">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Current Resonance</p>
                           <h3 className={`text-3xl font-serif ${pulseStatus.color}`}>{pulseStatus.text}</h3>
                       </div>
+
+                      {/* Relationship Facts Grid */}
+                      {relationshipFacts && (
+                          <div className="mb-12">
+                              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Relationship Facts</h3>
+                              <div className="grid grid-cols-2 gap-3">
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Calendar size={12}/> First Met</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstMet}</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Heart size={12}/> First Kiss</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstKiss}</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Clock size={12}/> Days Together</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysTogether} Days</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Infinity size={12}/> Anniversary</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysUntilAnniversary} Days Away</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Calendar size={12}/> First Date</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstDate}</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
+                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Gift size={12}/> Partner B-Day</div>
+                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysUntilBirthday} Days Away</p>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
                       
                       {/* Artifact Grid */}
                       <div className="grid grid-cols-2 gap-4">
@@ -373,7 +435,8 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               <div className="flex flex-col items-center mb-12">
                   <div className="w-32 h-32 rounded-full border-[6px] border-white shadow-2xl overflow-hidden mb-6"><img src={user.avatar} className="w-full h-full object-cover" /></div>
                   <h2 className="text-3xl font-serif text-slate-900 tracking-tight">{user.name}</h2>
-                  <button onClick={() => setIsEditingProfile(true)} className="mt-2 text-xs font-bold text-belluh-400 uppercase tracking-widest hover:text-belluh-600 transition-colors">Edit Profile</button>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">{totalMemoriesMe} Memories Created</p>
+                  <button onClick={() => setIsEditingProfile(true)} className="mt-4 text-xs font-bold text-belluh-400 uppercase tracking-widest hover:text-belluh-600 transition-colors bg-belluh-50 px-4 py-2 rounded-full">Edit Profile</button>
               </div>
 
               <div className="flex justify-between items-center mb-6">
