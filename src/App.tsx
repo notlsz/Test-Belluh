@@ -211,9 +211,9 @@ const App: React.FC = () => {
                 return {
                     id: r.id, // connection id
                     inviter: {
-                        id: inviter?.id,
+                        id: inviter?.id || r.user_id, // Fallback ID if profile missing
                         name: inviter?.full_name || 'Unknown User',
-                        avatar: inviter?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=unknown'
+                        avatar: inviter?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.user_id}`
                     }
                 };
             });
@@ -307,7 +307,11 @@ const App: React.FC = () => {
         // 6. Process User Content Entries (Filter out system tags)
         if (dbEntries) {
             const contentEntries = dbEntries.filter((e: any) => 
-                !e.tags || (!e.tags.includes('system_circle_def') && !e.tags.includes('system_circle_member'))
+                !e.tags || (
+                    !e.tags.includes('system_circle_def') && 
+                    !e.tags.includes('system_circle_member') &&
+                    !e.tags.includes('system_facts') // EXCLUDE FACTS ENTRY FROM TIMELINE
+                )
             );
             
             const mappedEntries: JournalEntry[] = contentEntries.map((e: any) => {
@@ -381,8 +385,6 @@ const App: React.FC = () => {
         }));
         
         // Onboarding Check
-        // Logic: Only show onboarding if user was created recently (e.g. last 5 mins) AND has no partner data.
-        // This effectively filters out old users logging back in.
         const isJustSignedUp = (new Date().getTime() - new Date(sessionUser.created_at).getTime()) < 5 * 60 * 1000;
         
         if (isJustSignedUp && !displayPartnerName && !partnerProfile) {
@@ -394,7 +396,6 @@ const App: React.FC = () => {
         setIsAuthenticated(true);
       } catch (err) {
           console.error("Failed to load user data", err);
-          // Don't reset state here, just stop loading to allow retry or show error
       } finally {
           setIsLoading(false);
       }
@@ -404,12 +405,9 @@ const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Listen for changes (Login, Logout, Token Refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             if (session?.user && mounted) {
-                // Ensure we only load if not already authenticated to prevent double loads
-                // But allow reloading if session changed drastically
                 loadUserData(session.user);
             }
         } else if (event === 'SIGNED_OUT') {
@@ -417,12 +415,11 @@ const App: React.FC = () => {
         }
     });
 
-    // Initial Session Check from Local Storage
     supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
             if (mounted) loadUserData(session.user);
         } else {
-            if (mounted) setIsLoading(false); // Stop loading if no session found
+            if (mounted) setIsLoading(false);
         }
     });
 
@@ -466,36 +463,23 @@ const App: React.FC = () => {
 
   const updateStreakLogic = async (userId: string) => {
     const today = new Date().toDateString();
-    
-    const existingEntryToday = entries.some(e => 
-        e.userId === userId && 
-        e.timestamp.toDateString() === today
-    );
-
+    const existingEntryToday = entries.some(e => e.userId === userId && e.timestamp.toDateString() === today);
     let newStreak = streak;
 
     if (!existingEntryToday) {
-        // If they hadn't posted today yet, check yesterday
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toDateString();
-
-        const hasEntryYesterday = entries.some(e => 
-            e.userId === userId && 
-            e.timestamp.toDateString() === yesterdayStr
-        );
+        const hasEntryYesterday = entries.some(e => e.userId === userId && e.timestamp.toDateString() === yesterdayStr);
 
         if (streak === 0) {
             newStreak = 1;
         } else if (hasEntryYesterday) {
             newStreak = streak + 1;
         } else {
-            // Broken streak, reset to 1 (since they just posted)
             newStreak = 1;
         }
     } 
-    // If they already posted today, streak doesn't increase again
-
     setStreak(newStreak);
     await supabase.from('profiles').update({ journal_streak: newStreak }).eq('id', userId);
   };
@@ -519,7 +503,7 @@ const App: React.FC = () => {
         type: 'Freeform', 
         is_shared: false, 
         is_favorite: false,
-        tags: ['onboarding', 'first_magic_moment', 'circle:c1'], // Default to c1
+        tags: ['onboarding', 'first_magic_moment', 'circle:c1'], 
         date: new Date().toISOString()
     };
     
@@ -559,18 +543,15 @@ const App: React.FC = () => {
           return;
       }
 
-      // Upsert payload to ensure profile creation if missing
+      // Ensure updated avatar is properly used
       const updatePayload: any = {
           id: currentUser.id,
           email: currentUser.email,
-          updated_at: new Date().toISOString()
+          // Removed updated_at to prevent PGRST204 schema error
+          full_name: updates.name !== undefined ? updates.name : user.name,
+          avatar_url: updates.avatar !== undefined ? updates.avatar : user.avatar
       };
-      
-      // Use new values if provided, otherwise preserve existing state
-      updatePayload.full_name = updates.name !== undefined ? updates.name : user.name;
-      updatePayload.avatar_url = updates.avatar !== undefined ? updates.avatar : user.avatar;
 
-      // Use Upsert instead of Update to fix PGRST116 (0 rows) error if profile is missing
       const { data, error } = await supabase
         .from('profiles')
         .upsert(updatePayload)
@@ -585,7 +566,6 @@ const App: React.FC = () => {
       
       trackEvent('profile_updated');
 
-      // Dynamic Circle Renaming Logic
       const myNewName = (data.full_name || user.name).split(' ')[0];
       const partnerName = user.partnerName ? user.partnerName.split(' ')[0] : 'Partner';
       
@@ -599,26 +579,24 @@ const App: React.FC = () => {
       setUser(prev => ({ 
           ...prev, 
           name: data.full_name, 
-          avatar: data.avatar_url,
+          avatar: data.avatar_url, // Update local state immediately
           circles: updatedCircles
       }));
       showNotification('Profile updated successfully', 'success');
   };
 
-  // NEW: Create Circle Logic (Persisted via Journal Entry workaround)
   const handleCreateCircle = async (name: string) => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
       const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
 
-      // Create a "System" entry to store the circle definition
       const { data, error } = await supabase.from('journal_entries').insert([{
           user_id: currentUser.id,
           title: name,
-          content: randomColor, // Store color in content
-          type: 'Milestone', // Use Milestone type for system events
-          tags: ['system_circle_def'], // Tag to identify as circle def
+          content: randomColor, 
+          type: 'Milestone', 
+          tags: ['system_circle_def'], 
           is_shared: false,
           date: new Date().toISOString()
       }]).select().single();
@@ -638,7 +616,7 @@ const App: React.FC = () => {
           setUser(prev => ({
               ...prev,
               circles: [...prev.circles, newCircle],
-              activeCircleId: newCircle.id // Automatically switch to the new circle
+              activeCircleId: newCircle.id 
           }));
           showNotification('New circle created!', 'success');
       } else {
@@ -647,9 +625,8 @@ const App: React.FC = () => {
       }
   };
 
-  // NEW: Archive Circle Logic
   const handleArchiveCircle = async (circleId: string) => {
-      if (circleId === 'c1') return; // Cannot archive main couple circle via this method
+      if (circleId === 'c1') return; 
 
       const { data: entry } = await supabase.from('journal_entries').select('tags').eq('id', circleId).single();
       if (!entry) return;
@@ -674,9 +651,8 @@ const App: React.FC = () => {
       }
   };
 
-  // NEW: Rename Circle Logic
   const handleRenameCircle = async (circleId: string, newName: string) => {
-      if (circleId === 'c1') return; // Cannot rename main couple circle via this method
+      if (circleId === 'c1') return; 
 
       const { error } = await supabase.from('journal_entries').update({ title: newName }).eq('id', circleId);
       
@@ -689,32 +665,50 @@ const App: React.FC = () => {
       }
   };
 
+  // Fixed Invite Handler - No hard reload
   const handleAcceptInvite = async (connectionId: string) => {
-      const { error } = await supabase
-          .from('partner_connections')
-          .update({ status: 'connected' })
-          .eq('id', connectionId);
+      try {
+          const { error } = await supabase
+              .from('partner_connections')
+              .update({ status: 'connected' })
+              .eq('id', connectionId);
 
-      if (error) {
-          showNotification('Failed to accept invite', 'error');
-      } else {
+          if (error) throw error;
+
           trackEvent('invite_accepted');
-          showNotification('Invite accepted! Refreshing...', 'success');
-          window.location.reload(); 
+          showNotification('Invite accepted!', 'success');
+          
+          // Refresh user data to show new circle state without reloading the page
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+              await loadUserData(user);
+          }
+      } catch (error) {
+          console.error(error);
+          showNotification('Failed to accept invite', 'error');
       }
   };
 
+  // Fixed Decline Handler - No hard reload
   const handleDeclineInvite = async (connectionId: string) => {
-      const { error } = await supabase
-          .from('partner_connections')
-          .delete()
-          .eq('id', connectionId);
+      try {
+          const { error } = await supabase
+              .from('partner_connections')
+              .delete()
+              .eq('id', connectionId);
 
-      if (error) {
-          showNotification('Failed to decline invite', 'error');
-      } else {
+          if (error) throw error;
+
           setPendingInvites(prev => prev.filter(i => i.id !== connectionId));
           showNotification('Invite declined', 'success');
+          
+          // Optional: Refresh user data just in case
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) loadUserData(user);
+
+      } catch (error) {
+          console.error(error);
+          showNotification('Failed to decline invite', 'error');
       }
   };
 
@@ -738,7 +732,7 @@ const App: React.FC = () => {
         audio_url: audioUrl,
         photo_url: mediaUrl,
         date: new Date().toISOString(),
-        tags: [`circle:${user.activeCircleId}`] // Persist Circle ID
+        tags: [`circle:${user.activeCircleId}`] 
     };
 
     const { data, error } = await supabase.from('journal_entries').insert([newEntryPayload]).select().single();
@@ -831,8 +825,7 @@ const App: React.FC = () => {
       );
   }
 
-  // Admin Overlay (Stealth Mode)
-  // This renders ON TOP of everything else if active, instead of as a route.
+  // Admin Overlay
   if (showAdmin && isUserAdmin) {
       return <AdminMetrics onBack={() => setShowAdmin(false)} />;
   }
@@ -902,8 +895,6 @@ const App: React.FC = () => {
     switch (currentTab) {
       case 'timeline':
         let timelineEntries: JournalEntry[] = entries;
-        
-        // Isolate entries to the active circle unless viewing "Constellation"
         if (user.activeCircleId !== 'constellation') {
              timelineEntries = entries.filter(e => e.circleId === user.activeCircleId);
         }
@@ -935,10 +926,10 @@ const App: React.FC = () => {
         return (
           <Profile 
             user={user} 
-            entries={entries} // Pass entries for Pulse Calculation
-            streak={streak}   // Pass streak for synchronization
+            entries={entries} 
+            streak={streak}   
             onCircleChange={handleCircleChange} 
-            onCreateCircle={handleCreateCircle} // Pass create function
+            onCreateCircle={handleCreateCircle} 
             onArchiveCircle={handleArchiveCircle}
             onRenameCircle={handleRenameCircle}
             onLogout={handleLogout}
