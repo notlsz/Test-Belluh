@@ -162,17 +162,35 @@ const App: React.FC = () => {
         const inviteId = params.get('invite');
 
         if (inviteId && inviteId !== sessionUser.id) {
-            // Just check if an existing connection exists (read-only)
+            // Check if connection already exists
             const { data: existing } = await supabase
                 .from('partner_connections')
                 .select('*')
                 .or(`and(user_id.eq.${inviteId},partner_id.eq.${sessionUser.id}),and(user_id.eq.${sessionUser.id},partner_id.eq.${inviteId})`);
             
-            // Invites are now created server-side or by the inviter, not via URL
-            // RLS policy blocks client-side inserts
+            if (!existing || existing.length === 0) {
+                // Insert new pending invite (inviteId invited sessionUser)
+                await supabase.from('partner_connections').insert({
+                    user_id: inviteId,
+                    partner_id: sessionUser.id,
+                    status: 'pending'
+                });
+                showNotification("Invite received! Check your profile.", "success");
+                trackEvent('invite_received', { inviter_id: inviteId });
+            }
         }
 
-        window.history.replaceState({}, document.title, "/");
+        // Clean URL - Safely handle history replacement
+        try {
+            const newUrl = new URL(window.location.href);
+            if (newUrl.searchParams.has('invite')) {
+                newUrl.searchParams.delete('invite');
+                window.history.replaceState({}, document.title, newUrl.toString());
+            }
+        } catch (e) {
+            // Ignore history errors in restricted environments (e.g. blob URLs)
+            console.debug("Could not clean URL query params:", e);
+        }
 
         // 1. Fetch User Profile
         // We use maybeSingle() to handle cases where profile doesn't exist yet (though Auth should create it)
@@ -319,7 +337,16 @@ const App: React.FC = () => {
             });
         }
 
-        // 6. Process User Content Entries (Filter out system tags)
+        // 6. Extract Relationship Facts
+        let relationshipFacts = '';
+        if (dbEntries) {
+            const factsEntry = dbEntries.find((e: any) => e.tags && e.tags.includes('system_facts'));
+            if (factsEntry) {
+                relationshipFacts = factsEntry.content;
+            }
+        }
+
+        // 7. Process User Content Entries (Filter out system tags)
         if (dbEntries) {
             const contentEntries = dbEntries.filter((e: any) => 
                 !e.tags || (
@@ -396,7 +423,8 @@ const App: React.FC = () => {
             activeCircleId: 'c1',
             isPremium: false,
             settings: CURRENT_USER.settings,
-            hasCompletedOnboarding: !!displayPartnerName
+            hasCompletedOnboarding: !!displayPartnerName,
+            relationshipFacts: relationshipFacts // LOADED FROM DB
         }));
         
         // Onboarding Check
@@ -552,6 +580,12 @@ const App: React.FC = () => {
   };
 
   const handleUpdateUser = async (updates: Partial<User>) => {
+      // If we are only updating local state properties (like relationshipFacts) from child components
+      if (updates.relationshipFacts) {
+          setUser(prev => ({ ...prev, ...updates }));
+          return;
+      }
+
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) {
           showNotification('You must be logged in to update your profile', 'error');

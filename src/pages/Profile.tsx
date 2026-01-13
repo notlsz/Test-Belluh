@@ -257,7 +257,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       firstKiss: { size: 'standard', hidden: false },
       firstDate: { size: 'standard', hidden: false },
       partnerBday: { size: 'standard', hidden: false },
-      anniversary: { size: 'standard', hidden: false }, // The editable date field
+      anniversary: { size: 'standard', hidden: false }, 
   });
 
   const [isEditingFacts, setIsEditingFacts] = useState(false);
@@ -294,18 +294,33 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
   const pulseStatus = synergyScore >= 80 ? { text: "Deeply Connected", color: "text-[#f0addd]" } : { text: "Steady Growth", color: "text-slate-600" };
 
-  // Sync facts when circle changes
+  // Initialize facts from User state (Loaded in App.tsx)
   useEffect(() => {
-    if (activeCircle?.startDate) {
+    if (user.relationshipFacts) {
+        try {
+            const parsed = JSON.parse(user.relationshipFacts);
+            setFacts({
+                firstMet: parsed.firstMet ? new Date(parsed.firstMet) : new Date(),
+                firstKiss: parsed.firstKiss ? new Date(parsed.firstKiss) : new Date(),
+                firstDate: parsed.firstDate ? new Date(parsed.firstDate) : new Date(),
+                partnerBday: parsed.partnerBday ? new Date(parsed.partnerBday) : new Date(),
+                anniversary: parsed.anniversary ? new Date(parsed.anniversary) : new Date(),
+            });
+            if (parsed.configs) {
+                setFactConfigs(prev => ({...prev, ...parsed.configs}));
+            }
+        } catch (e) {
+            console.error("Failed to parse relationship facts from user state", e);
+        }
+    } else if (activeCircle?.startDate) {
         const start = new Date(activeCircle.startDate);
         setFacts(prev => ({
             ...prev,
             firstMet: start,
-            // If anniversary isn't set, default to start date
             anniversary: start
         }));
     }
-  }, [activeCircle?.id]);
+  }, [user.relationshipFacts, activeCircle?.id]);
 
   useEffect(() => {
     if (!user.id) return;
@@ -374,7 +389,8 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               .from('journal-media')
               .getPublicUrl(fileName);
 
-          setEditAvatar(data.publicUrl);
+          const publicUrl = data.publicUrl + '?t=' + Date.now();
+          setEditAvatar(publicUrl);
           onShowToast("Photo uploaded successfully", "success");
       } catch (error) {
           console.error("Upload failed:", error);
@@ -474,9 +490,60 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       }
   };
 
-  const saveFacts = () => {
+  const saveFacts = async () => {
     setIsEditingFacts(false);
-    onShowToast("Relationship facts updated", "success");
+    
+    // Prepare JSON payload
+    const payload = {
+        firstMet: facts.firstMet.toISOString(),
+        firstKiss: facts.firstKiss.toISOString(),
+        firstDate: facts.firstDate.toISOString(),
+        partnerBday: facts.partnerBday.toISOString(),
+        anniversary: facts.anniversary.toISOString(),
+        configs: factConfigs
+    };
+    
+    const factsText = JSON.stringify(payload);
+
+    try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) return;
+        
+        // Find existing facts entry
+        const { data: existingFacts } = await supabase
+          .from('journal_entries')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .contains('tags', ['system_facts'])
+          .maybeSingle();
+        
+        if (existingFacts) {
+          // Update existing
+          await supabase
+            .from('journal_entries')
+            .update({ content: factsText })
+            .eq('id', existingFacts.id);
+        } else {
+          // Create new
+          await supabase
+            .from('journal_entries')
+            .insert({
+              user_id: currentUser.id,
+              content: factsText,
+              type: 'Milestone',
+              tags: ['system_facts', `circle:${activeCircleId}`],
+              is_shared: true,
+              date: new Date().toISOString(),
+            });
+        }
+        
+        // UPDATE GLOBAL STATE SO IT PERSISTS WITHOUT RELOAD
+        onUpdateUser({ relationshipFacts: factsText });
+        onShowToast("Relationship facts saved", "success");
+    } catch (e) {
+        console.error("Error saving facts:", e);
+        onShowToast("Failed to save facts", "error");
+    }
   };
 
   const cycleSize = (id: string) => {

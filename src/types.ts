@@ -74,6 +74,7 @@ export interface User {
   settings: UserSettings;
   hasCompletedOnboarding: boolean;
   detectedPersona: UserPersona; // The AI adapts to this
+  relationshipFacts?: string; // Stored as JSON string
 }
 
 export interface JournalEntry {
