@@ -215,7 +215,7 @@ const App: React.FC = () => {
             .or(`user_id.eq.${sessionUser.id},partner_id.eq.${sessionUser.id}`);
         
         let connectedUserIds: string[] = [];
-        let partnerProfile = null;
+        let connectedProfiles: any[] = [];
 
         if (connections && connections.length > 0) {
             // Get all connected IDs
@@ -224,15 +224,12 @@ const App: React.FC = () => {
             );
 
             // Fetch all connected profiles
-            const { data: connectedProfiles } = await supabase
+            const { data: profiles } = await supabase
                 .from('profiles')
                 .select('*')
                 .in('id', connectedUserIds);
             
-            // Set primary partner as the first one found (for backward compat with UI showing one partner)
-            if (connectedProfiles && connectedProfiles.length > 0) {
-                partnerProfile = connectedProfiles[0];
-            }
+            connectedProfiles = profiles || [];
         }
 
         // 3. Fetch Pending Incoming Invites
@@ -281,20 +278,25 @@ const App: React.FC = () => {
         const newCircles: any[] = [];
         const myFirstName = profile?.full_name?.trim().split(' ')[0] || sessionUser.email?.split('@')[0] || 'Me';
         
-        // Couple Circle (Default / Primary)
-        if (partnerProfile) {
-            const partnerFirstName = partnerProfile.full_name?.trim().split(' ')[0] || 'Partner';
-            const circleName = `${myFirstName} & ${partnerFirstName}`;
+        // Couple Circles - One for EACH connected partner
+        if (connectedProfiles.length > 0) {
+            connectedProfiles.forEach((pProfile, index) => {
+                const partnerFirstName = pProfile.full_name?.trim().split(' ')[0] || 'Partner';
+                const circleName = `${myFirstName} & ${partnerFirstName}`;
+                
+                // First partner gets 'c1' (backward compatibility), others get unique ID based on partner ID
+                const circleId = index === 0 ? 'c1' : `partner_${pProfile.id}`;
 
-            newCircles.push({
-                id: 'c1',
-                name: circleName,
-                type: CircleType.Couple as any,
-                status: CircleStatus.Active as any,
-                members: [sessionUser.id, partnerProfile.id],
-                themeColor: '#f0addd',
-                avatar: partnerProfile.avatar_url,
-                startDate: new Date()
+                newCircles.push({
+                    id: circleId,
+                    name: circleName,
+                    type: CircleType.Couple as any,
+                    status: CircleStatus.Active as any,
+                    members: [sessionUser.id, pProfile.id],
+                    themeColor: '#f0addd',
+                    avatar: pProfile.avatar_url,
+                    startDate: new Date()
+                });
             });
         } else {
              newCircles.push({
@@ -381,9 +383,10 @@ const App: React.FC = () => {
                     authorName = profile?.full_name || 'Me';
                     authorAvatar = profile?.avatar_url || '';
                 } else {
-                    if (partnerProfile && e.user_id === partnerProfile.id) {
-                        authorName = partnerProfile.full_name;
-                        authorAvatar = partnerProfile.avatar_url;
+                    const authorProfile = connectedProfiles.find(p => p.id === e.user_id);
+                    if (authorProfile) {
+                        authorName = authorProfile.full_name;
+                        authorAvatar = authorProfile.avatar_url;
                     } else {
                         authorName = 'Friend'; 
                         authorAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + e.user_id;
@@ -422,7 +425,9 @@ const App: React.FC = () => {
         const currentStreak = profile?.journal_streak || 0;
         setStreak(currentStreak);
 
-        const displayPartnerName = profile?.partner_name || partnerProfile?.full_name || undefined;
+        // Primary partner is just the first one found for header display defaults
+        const primaryPartner = connectedProfiles.length > 0 ? connectedProfiles[0] : null;
+        const displayPartnerName = profile?.partner_name || primaryPartner?.full_name || undefined;
 
         setUser(prev => ({ 
             ...prev, 
@@ -430,9 +435,9 @@ const App: React.FC = () => {
             name: profile?.full_name || sessionUser.email?.split('@')[0] || 'User',
             avatar: profile?.avatar_url || prev.avatar,
             partnerName: displayPartnerName,
-            partnerAvatar: partnerProfile?.avatar_url || undefined,
+            partnerAvatar: primaryPartner?.avatar_url || undefined,
             circles: newCircles as any,
-            activeCircleId: 'c1',
+            activeCircleId: 'c1', // Always default to first circle or main space
             isPremium: false,
             settings: CURRENT_USER.settings,
             hasCompletedOnboarding: !!displayPartnerName,
@@ -442,7 +447,7 @@ const App: React.FC = () => {
         // Onboarding Check
         const isJustSignedUp = (new Date().getTime() - new Date(sessionUser.created_at).getTime()) < 5 * 60 * 1000;
         
-        if (isJustSignedUp && !displayPartnerName && !partnerProfile) {
+        if (isJustSignedUp && !displayPartnerName && !primaryPartner) {
            setIsOnboarding(true);
         } else {
             setIsOnboarding(false);
