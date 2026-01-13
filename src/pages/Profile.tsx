@@ -42,7 +42,7 @@ interface CircleCardProps {
 const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onInvite }) => {
     const dotColor = circle.status === CircleStatus.Archived ? 'bg-yellow-400' : 'bg-[#f0addd]'; 
     return (
-        <div onClick={onClick} className={`w-[240px] h-[140px] rounded-[1.8rem] p-6 flex flex-col justify-between cursor-pointer transition-all duration-500 relative overflow-hidden group shrink-0 ${isActive ? 'bg-white shadow-apple scale-[1.05] z-10 translate-y-[-4px]' : 'bg-white border border-slate-100 opacity-80'}`}>
+        <div onClick={onClick} className={`w-[240px] h-[140px] rounded-[1.8rem] p-6 flex flex-col justify-between cursor-pointer transition-all duration-500 relative overflow-hidden group shrink-0 snap-start ${isActive ? 'bg-white shadow-apple scale-[1.05] z-10 translate-y-[-4px]' : 'bg-white border border-slate-100 opacity-80'}`}>
             <div className="flex justify-between items-start relative z-10">
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all ${isActive ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-50 text-slate-500'}`}>{circle.name[0]}</div>
                 {isActive && <div className={`w-3 h-3 ${dotColor} rounded-full animate-pulse border border-white`}></div>}
@@ -149,6 +149,14 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const handleTriggerInvite = (circleId: string) => {
     setInvitingCircleId(circleId);
     setShowInviteModal(true);
+  };
+
+  const handleCreateCircle = () => {
+      if (newCircleName.trim() && onCreateCircle) {
+          onCreateCircle(newCircleName);
+          setIsCreatingCircle(false);
+          setNewCircleName('');
+      }
   };
 
   const handleSaveProfile = () => { onUpdateUser({ name: editName, avatar: editAvatar }); setIsEditingProfile(false); };
@@ -439,48 +447,105 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   <button onClick={() => setIsEditingProfile(true)} className="mt-4 text-xs font-bold text-belluh-400 uppercase tracking-widest hover:text-belluh-600 transition-colors bg-belluh-50 px-4 py-2 rounded-full">Edit Profile</button>
               </div>
 
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Circles</h3>
-                <button onClick={() => setIsCreatingCircle(true)} className="p-1.5 bg-slate-900 text-white rounded-full hover:bg-black transition-colors"><Plus size={14} /></button>
-              </div>
-              
-              <div className="flex gap-4 overflow-x-auto pb-6 -mx-6 px-6 no-scrollbar">
-                  {/* Constellation Card */}
-                  <div 
-                    onClick={() => handleCircleSwitch('constellation')} 
-                    className={`w-[240px] h-[140px] rounded-[1.8rem] p-6 flex flex-col justify-between cursor-pointer transition-all duration-500 relative overflow-hidden group shrink-0 ${activeCircleId === 'constellation' ? 'bg-slate-900 shadow-xl scale-[1.05] z-10 translate-y-[-4px]' : 'bg-slate-900 border border-slate-800 opacity-90'}`}
-                  >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-belluh-500/20 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
-                        <div className="relative z-10">
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all bg-white/10 text-white border border-white/10`}>
-                                <Star size={18} className="fill-white" />
+              {/* Circles */}
+              <div className="mb-12">
+                   <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                             <Users size={16} className="text-slate-900" />
+                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Circles</h3>
+                        </div>
+                   </div>
+
+                   <div className="flex gap-4 overflow-x-auto pb-6 pt-8 -mx-6 px-6 no-scrollbar snap-x items-center">
+                       <div 
+                           onClick={() => setIsCreatingCircle(!isCreatingCircle)}
+                           className="w-[240px] h-[140px] shrink-0 rounded-[1.8rem] bg-white border border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:border-slate-500 hover:bg-slate-50 transition-all duration-300 group snap-start shadow-sm hover:shadow-md"
+                       >
+                           <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600 transition-colors mb-3">
+                               <Plus size={24} />
+                           </div>
+                           <span className="text-sm font-bold text-slate-500 group-hover:text-slate-800">New Circle</span>
+                       </div>
+
+                       {isCreatingCircle && (
+                            <div className="w-[240px] h-[140px] shrink-0 bg-white p-4 rounded-[1.8rem] shadow-xl border border-slate-100 flex flex-col justify-between animate-scale-in snap-start">
+                                <input 
+                                    type="text" 
+                                    value={newCircleName} 
+                                    onChange={(e) => setNewCircleName(e.target.value)} 
+                                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCircle()} 
+                                    placeholder="Circle Name..." 
+                                    className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 font-bold mb-2"
+                                    autoFocus
+                                />
+                                <div className="flex gap-2">
+                                    <button onClick={() => setIsCreatingCircle(false)} className="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
+                                    <button onClick={handleCreateCircle} disabled={!newCircleName.trim()} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-xs font-bold hover:bg-black disabled:opacity-50">Create</button>
+                                </div>
                             </div>
-                        </div>
-                        <div className="relative z-10 text-white">
-                            <h4 className="font-bold text-lg leading-tight mb-1 truncate">My Constellation</h4>
-                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">All Chapters</span>
-                        </div>
-                  </div>
+                       )}
 
-                  {activeCircles.map(c => <CircleCard key={c.id} circle={c} isActive={activeCircleId === c.id} onClick={() => handleCircleSwitch(c.id)} user={user} onInvite={handleTriggerInvite} />)}
+                       {activeCircles.map(circle => (
+                           <CircleCard 
+                                key={circle.id} 
+                                circle={circle} 
+                                isActive={activeCircleId === circle.id} 
+                                onClick={() => handleCircleSwitch(circle.id)} 
+                                user={user}
+                                onInvite={handleTriggerInvite}
+                           />
+                       ))}
+                   </div>
+                   
+                   {archivedCircles.length > 0 && (
+                       <div className="mt-8">
+                           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Past Chapters</h3>
+                           <div className="flex gap-4 overflow-x-auto pb-6 pt-8 -mx-6 px-6 no-scrollbar snap-x items-center">
+                                {archivedCircles.map(circle => (
+                                    <div key={circle.id} className="opacity-70 hover:opacity-100 transition-opacity grayscale hover:grayscale-0">
+                                        <CircleCard 
+                                            circle={circle} 
+                                            isActive={activeCircleId === circle.id} 
+                                            onClick={() => handleCircleSwitch(circle.id)} 
+                                            user={user}
+                                            onInvite={handleTriggerInvite}
+                                        />
+                                    </div>
+                                ))}
+                           </div>
+                       </div>
+                   )}
+
+                   <div className="mt-8">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-1">Your Story</h3>
+                      <button 
+                        onClick={() => handleCircleSwitch('constellation')}
+                        className={`w-full relative overflow-hidden rounded-[1.8rem] p-6 text-left group transition-all duration-300
+                            ${activeCircleId === 'constellation' 
+                                ? 'bg-slate-900 text-white shadow-xl translate-y-[-2px]' 
+                                : 'bg-slate-900 text-white shadow-md hover:shadow-xl hover:scale-[1.01]'
+                            }
+                        `}
+                      >
+                           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] group-hover:bg-white/10 transition-colors pointer-events-none"></div>
+                           <div className="absolute bottom-0 left-0 w-40 h-40 bg-belluh-500/30 rounded-full blur-[60px] pointer-events-none"></div>
+                           
+                           <div className="relative z-10 flex items-center justify-between">
+                               <div>
+                                   <div className="flex items-center gap-2 mb-2">
+                                       <Star size={16} className={activeCircleId === 'constellation' ? "text-belluh-300 fill-belluh-300" : "text-belluh-300"} />
+                                       <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">The Constellation</span>
+                                   </div>
+                                   <h4 className="text-xl font-serif">All Your Stars Aligned</h4>
+                                   <p className="text-xs text-slate-400 mt-1 max-w-xs">A combined timeline of every relationship, every moment, and every lesson learned.</p>
+                               </div>
+                               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10 group-hover:bg-white/20 transition-colors">
+                                   <ChevronRight size={20} />
+                               </div>
+                           </div>
+                      </button>
+                   </div>
               </div>
-
-              {archivedCircles.length > 0 && (
-                  <div className="mt-12">
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Archived Circles</h3>
-                      <div className="grid grid-cols-1 gap-4">
-                          {archivedCircles.map(c => (
-                              <div key={c.id} onClick={() => handleCircleSwitch(c.id)} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between cursor-pointer group">
-                                  <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center font-bold">{c.name[0]}</div>
-                                      <span className="font-bold text-slate-700">{c.name}</span>
-                                  </div>
-                                  <Archive size={16} className="text-slate-300 group-hover:text-slate-400 transition-colors" />
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              )}
           </div>
       )}
 
@@ -755,38 +820,6 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                       </div>
                   </div>
                   <button onClick={handleSaveProfile} className="w-full mt-10 bg-slate-900 text-white py-4 rounded-2xl font-bold">Save Changes</button>
-              </div>
-          </div>
-      )}
-
-      {/* Circle Creation Modal */}
-      {isCreatingCircle && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setIsCreatingCircle(false)}>
-              <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
-                  <h3 className="font-serif text-2xl mb-8 text-slate-900">New Circle</h3>
-                  <div className="space-y-4">
-                      <input 
-                          type="text" 
-                          autoFocus
-                          placeholder="Circle name..."
-                          value={newCircleName}
-                          onChange={e => setNewCircleName(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
-                      />
-                      <button 
-                        onClick={() => {
-                            if (newCircleName.trim() && onCreateCircle) {
-                                onCreateCircle(newCircleName);
-                                setIsCreatingCircle(false);
-                                setNewCircleName('');
-                            }
-                        }} 
-                        disabled={!newCircleName.trim()}
-                        className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all disabled:opacity-50"
-                      >
-                          Create Circle
-                      </button>
-                  </div>
               </div>
           </div>
       )}
