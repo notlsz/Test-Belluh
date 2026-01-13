@@ -80,6 +80,10 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
     
     const currentTheme = themes[theme] || themes.blue;
 
+    // Robust Date Validation to prevent RangeErrors
+    const isValid = date instanceof Date && !isNaN(date.getTime());
+    const displayValue = isValid ? date.toISOString().split('T')[0] : '';
+
     return (
         <div className={`relative overflow-hidden rounded-[2rem] p-6 h-48 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl border ${currentTheme} group`}>
             {/* Decorative Background */}
@@ -98,18 +102,25 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
                     <div className="bg-white/30 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-sm">
                         <input 
                             type="date" 
-                            value={date instanceof Date ? date.toISOString().split('T')[0] : ''}
-                            onChange={(e) => setDate(new Date(e.target.value))}
+                            value={displayValue}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    const newDate = new Date(e.target.value);
+                                    if (!isNaN(newDate.getTime())) {
+                                        setDate(newDate);
+                                    }
+                                }
+                            }}
                             className="w-full bg-transparent border-none text-lg font-bold outline-none text-inherit p-0 focus:ring-0 cursor-pointer font-serif"
                         />
                     </div>
                 ) : (
                     <>
                         <div className="text-3xl md:text-4xl font-serif font-medium tracking-tight leading-tight mb-1">
-                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {isValid ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
                         </div>
                         <div className="text-sm font-medium opacity-60">
-                            {date.getFullYear()}
+                            {isValid ? date.getFullYear() : ''}
                         </div>
                     </>
                 )}
@@ -503,7 +514,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                   {/* Days Together - High Contrast Stat */}
                                   <StatCard 
                                       label="Time Together"
-                                      value={`${Math.floor((new Date().getTime() - facts.firstMet.getTime()) / (1000 * 60 * 60 * 24))}d`}
+                                      value={!isNaN(facts.firstMet.getTime()) ? `${Math.floor((new Date().getTime() - facts.firstMet.getTime()) / (1000 * 60 * 60 * 24))}d` : '--'}
                                       subtext="And counting"
                                       icon={Clock}
                                       theme="slate"
@@ -513,6 +524,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                   <StatCard 
                                       label="Next Anniversary"
                                       value={(() => {
+                                          if (isNaN(facts.anniversary.getTime())) return '--';
                                           const now = new Date();
                                           const next = new Date(facts.anniversary);
                                           next.setFullYear(now.getFullYear());
@@ -951,60 +963,6 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                    </div>
                )}
            </div>
-      )}
-
-      {/* Partner Invite Modal Dialog */}
-      {showInviteModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInviteModal(false)}>
-              <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-serif text-2xl text-slate-900">Invite Partner</h3>
-                    <button onClick={() => setShowInviteModal(false)}><X size={20} className="text-slate-400"/></button>
-                  </div>
-                  <p className="text-slate-500 text-sm mb-6">Share a link or invite via email to connect your journals.</p>
-                  
-                  {inviteStatus === 'sent' ? (
-                      <div className="text-center py-6 animate-pop">
-                          <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 size={32}/></div>
-                          <p className="font-bold text-slate-900">Invite Sent!</p>
-                      </div>
-                  ) : (
-                      <div className="space-y-6">
-                          <button 
-                            onClick={handleCopyInviteLink}
-                            className="w-full bg-belluh-50 text-belluh-600 border border-belluh-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-belluh-100 transition-all"
-                          >
-                              <LinkIcon size={16} />
-                              <span>Copy Invite Link</span>
-                          </button>
-
-                          <div className="relative">
-                              <div className="absolute inset-0 flex items-center">
-                                  <div className="w-full border-t border-slate-100"></div>
-                              </div>
-                              <div className="relative flex justify-center text-xs">
-                                  <span className="bg-white px-2 text-slate-400 font-medium">OR VIA EMAIL</span>
-                              </div>
-                          </div>
-
-                          <form onSubmit={handleInviteSubmit} className="space-y-4">
-                              <input 
-                                  type="email" 
-                                  required 
-                                  value={inviteEmail}
-                                  onChange={e => setInviteEmail(e.target.value)}
-                                  placeholder="partner@email.com"
-                                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
-                              />
-                              {inviteStatus === 'not-found' && <p className="text-rose-500 text-xs font-bold px-1">User not found. Send them the link instead!</p>}
-                              <button type="submit" disabled={inviteStatus === 'searching'} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
-                                  {inviteStatus === 'searching' ? <Loader2 size={18} className="animate-spin" /> : <><span>Send Invite</span> <Send size={16} /></>}
-                              </button>
-                          </form>
-                      </div>
-                  )}
-              </div>
-          </div>
       )}
 
       {/* Profile Modification Modal */}
