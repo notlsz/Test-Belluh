@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { JournalEntry, Circle, Insight, CircleStatus, RelationshipForecast } from '../types';
 import EntryCard from '../components/EntryCard';
 import WeeklyReport from '../components/WeeklyReport';
-import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BarChart3, History, CloudSun, CloudRain, Sun, Zap } from 'lucide-react';
+import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BookOpen, History, CloudSun, CloudRain, Sun, Zap } from 'lucide-react';
 import { DAILY_PROMPTS } from '../constants';
 import { askBelluhAboutJournal, generateRelationshipForecast, detectPatterns } from '../services/geminiService';
 import { trackEvent } from '../services/analytics';
@@ -91,7 +91,9 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     sorted.forEach(entry => {
         if (processedIds.has(entry.id)) return;
 
+        // Group by Month Year for the divider
         const entryMonthStr = entry.timestamp.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
         if (entryMonthStr !== lastMonthStr) {
             items.push({ type: 'header', title: entryMonthStr });
             lastMonthStr = entryMonthStr;
@@ -129,7 +131,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   };
 
   return (
-    <div className="pb-32 pt-2 px-0 max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto min-h-screen bg-[#fcfcfc]">
+    <div className="pb-32 pt-0 px-0 max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto min-h-screen bg-[#fcfcfc]">
        
        {/* Weekly Report Modal Overlay */}
        {showWeeklyReport && (
@@ -232,26 +234,29 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
            </div>
        )}
 
-       <div className="sticky top-0 z-40 bg-[#fcfcfc]/90 backdrop-blur-xl border-b border-transparent">
-          <div className="px-6 pt-6 pb-2 max-w-3xl mx-auto">
-             <div className="flex items-center justify-between mb-8">
+       {/* Redesigned Header */}
+       <div className="sticky top-0 z-40 bg-[#fcfcfc]/95 backdrop-blur-xl border-b border-transparent transition-all duration-300">
+          <div className="px-6 pt-8 pb-4 max-w-3xl mx-auto">
+             <div className="flex items-start justify-between mb-6">
                 <div className="relative">
                     <button 
                         onClick={() => setIsCircleMenuOpen(!isCircleMenuOpen)}
-                        className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-slate-50 transition-colors"
+                        className="text-left group focus:outline-none"
                     >
-                        {isArchived && <Archive size={14} className="text-slate-400"/>}
-                        {isConstellation ? (
-                                <Star size={14} className="text-slate-900 fill-slate-900"/>
-                        ) : null}
-                        <h1 className="text-sm font-semibold text-slate-900 tracking-tight group-hover:text-slate-700">
+                        <h1 className="font-serif text-3xl md:text-4xl text-slate-900 leading-tight group-hover:opacity-70 transition-opacity flex items-center gap-2">
                             {isConstellation ? "My Constellation" : activeCircle?.name}
+                            {isArchived && <Archive size={20} className="text-slate-300" />}
                         </h1>
-                        <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCircleMenuOpen ? 'rotate-180' : ''}`} />
+                        <div className="flex items-center gap-2 mt-2">
+                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-belluh-400">
+                                {isConstellation ? "All Memories" : "Shared Journal"}
+                             </span>
+                             <ChevronDown size={12} className={`text-slate-300 transition-transform duration-300 ${isCircleMenuOpen ? 'rotate-180' : ''}`} />
+                        </div>
                     </button>
 
                     {isCircleMenuOpen && (
-                        <div className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 w-64 animate-pop z-50 origin-top-left ring-1 ring-black/5 max-h-80 overflow-y-auto">
+                        <div className="absolute top-full left-0 mt-4 bg-white rounded-[2rem] shadow-2xl border border-slate-100 p-2 w-72 animate-scale-in z-50 origin-top-left ring-1 ring-black/5 max-h-[60vh] overflow-y-auto">
                             <div className="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-widest">Active Circles</div>
                             {circles.filter(c => c.status === CircleStatus.Active).map(c => (
                                 <button key={c.id} className="w-full p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 text-left group" onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); }}>
@@ -289,12 +294,17 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
 
                 {!isConstellation && (
                     <div className="flex items-center gap-2">
-                         <button onClick={() => { setShowWeeklyReport(true); trackEvent('weekly_report_opened'); }} className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-2 rounded-full text-xs font-semibold transition-all"><BarChart3 size={14} /><span className="hidden sm:inline">Our Report</span></button>
+                         <button 
+                            onClick={() => { setShowWeeklyReport(true); trackEvent('weekly_report_opened'); }}
+                            className="w-12 h-12 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-belluh-500 hover:border-belluh-200 shadow-sm transition-all group"
+                         >
+                            <BookOpen size={20} strokeWidth={1.5} className="group-hover:scale-110 transition-transform"/>
+                         </button>
                     </div>
                 )}
              </div>
 
-             {/* Thiel Upgrade: Predictive Forecast UI */}
+             {/* Forecast */}
              {forecast && !isConstellation && !isArchived && (
                  <div className="mb-6 animate-scale-in">
                      <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-float flex items-center gap-5 relative overflow-hidden">
@@ -313,6 +323,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                  </div>
              )}
 
+             {/* Ask Belluh Search */}
              <form 
                 onSubmit={handleSearchSubmit} 
                 className={`relative bg-white rounded-3xl transition-all duration-300 flex items-center px-4 py-4 ${
@@ -362,12 +373,15 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
 
           {/* Timeline Feed */}
           {groupedItems.map((item, index) => {
-              // Header
+              // Header with Custom Centered Design
               if ('type' in item && item.type === 'header') {
                   return (
-                      <div key={`header-${index}`} className="relative pl-20 md:pl-24 pr-6 mb-6 mt-6 animate-fade-in">
-                          <div className="absolute left-14 md:left-20 top-1/2 w-1 h-1 bg-slate-300 rounded-full z-10 -translate-x-[2px] ring-4 ring-[#fcfcfc]"></div>
-                          <span className="text-[10px] font-bold text-slate-400 bg-[#fcfcfc] pr-2 relative z-10 uppercase tracking-widest">{item.title}</span>
+                      <div key={`header-${index}`} className="relative pl-20 md:pl-24 pr-6 mb-8 mt-12 flex items-center opacity-60">
+                           <div className="h-px bg-slate-200 flex-1"></div>
+                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4">
+                               {item.title}
+                           </span>
+                           <div className="h-px bg-slate-200 flex-1"></div>
                       </div>
                   );
               }
