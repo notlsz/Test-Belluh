@@ -14,14 +14,14 @@
           extend: {
             colors: {
               belluh: {
-                50: '#fdf4fb',
-                100: '#fbebf7',
-                200: '#f7d8ee',
-                300: '#f0addd',
-                400: '#e57ec3',
-                500: '#d953a6',
-                600: '#bb3886',
-                900: '#5e1c43',
+                50: 'var(--color-belluh-50)',
+                100: 'var(--color-belluh-100)',
+                200: 'var(--color-belluh-200)',
+                300: 'var(--color-belluh-300)',
+                400: 'var(--color-belluh-400)',
+                500: 'var(--color-belluh-500)',
+                600: 'var(--color-belluh-600)',
+                900: 'var(--color-belluh-900)',
               },
               paper: '#fcfcfc',
               slate: {
@@ -91,7 +91,7 @@
             },
             boxShadow: {
               'soft': '0 4px 30px -4px rgba(0,0,0,0.03)',
-              'glow': '0 0 60px rgba(240, 173, 221, 0.4)',
+              'glow': '0 0 60px rgba(var(--color-belluh-300-rgb), 0.4)',
               'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
               'float': '0 20px 40px -12px rgba(0,0,0,0.08)',
               'apple': '0 12px 40px -8px rgba(0,0,0,0.06)',
@@ -104,6 +104,18 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
     <style>
+      :root {
+        /* Default Pink Theme Fallback */
+        --color-belluh-50: #fdf4fb;
+        --color-belluh-100: #fbebf7;
+        --color-belluh-200: #f7d8ee;
+        --color-belluh-300: #f0addd;
+        --color-belluh-400: #e57ec3;
+        --color-belluh-500: #d953a6;
+        --color-belluh-600: #bb3886;
+        --color-belluh-900: #5e1c43;
+        --color-belluh-300-rgb: 240, 173, 221;
+      }
       body {
         font-family: 'Inter', sans-serif;
         background-color: #fcfcfc;
@@ -133,7 +145,7 @@
         box-shadow: none;
       }
       ::selection {
-        background: #f0addd;
+        background: var(--color-belluh-300);
         color: #fff;
       }
       .gradient-text {

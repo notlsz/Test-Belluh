@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { JournalEntry, Circle, Insight, CircleStatus, RelationshipForecast } from '../types';
 import EntryCard from '../components/EntryCard';
 import WeeklyReport from '../components/WeeklyReport';
-import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BookOpen, History, CloudSun, CloudRain, Sun, Zap } from 'lucide-react';
+import { ChevronDown, Plus, Sparkles, PenLine, Flame, X, Loader2, ArrowRight, Waves, Quote, Archive, Star, BookOpen, History, CloudSun, CloudRain, Sun, Zap, Eye, EyeOff } from 'lucide-react';
 import { DAILY_PROMPTS } from '../constants';
 import { askBelluhAboutJournal, generateRelationshipForecast, detectPatterns } from '../services/geminiService';
 import { trackEvent } from '../services/analytics';
@@ -37,6 +37,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [detectedPatterns, setDetectedPatterns] = useState<Insight[]>([]);
   const [selectedPattern, setSelectedPattern] = useState<Insight | null>(null);
+  const [showPatterns, setShowPatterns] = useState(true);
 
   const isConstellation = activeCircleId === 'constellation';
   const activeCircle = isConstellation ? null : circles.find(c => c.id === activeCircleId);
@@ -77,12 +78,12 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     const sorted = [...filteredEntries].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     const items: (JournalEntry | { type: 'header', title: string } | { type: 'pattern', data: Insight })[] = [];
     
-    // Mix in patterns
+    // Mix in patterns if enabled
     const processedIds = new Set<string>();
     let lastMonthStr = '';
 
     // Insert detected patterns at the top for visibility
-    if (!searchQuery && sorted.length > 0 && !isArchived) {
+    if (!searchQuery && sorted.length > 0 && !isArchived && showPatterns) {
         detectedPatterns.forEach(p => {
             items.push({ type: 'pattern', data: p });
         });
@@ -104,7 +105,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
     });
 
     return items;
-  }, [filteredEntries, detectedPatterns, searchQuery, isArchived]);
+  }, [filteredEntries, detectedPatterns, searchQuery, isArchived, showPatterns]);
 
   const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,20 +293,27 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                     )}
                 </div>
 
-                {!isConstellation && (
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                     <button
+                        onClick={() => setShowPatterns(!showPatterns)}
+                        className={`w-12 h-12 rounded-full border border-slate-100 flex items-center justify-center transition-all group shadow-sm ${showPatterns ? 'bg-belluh-50 text-belluh-500 border-belluh-100' : 'bg-white text-slate-400 hover:text-slate-600'}`}
+                        title={showPatterns ? "Hide patterns" : "Show patterns"}
+                     >
+                        {showPatterns ? <Eye size={20} strokeWidth={1.5} /> : <EyeOff size={20} strokeWidth={1.5} />}
+                     </button>
+                     {!isConstellation && (
                          <button 
                             onClick={() => { setShowWeeklyReport(true); trackEvent('weekly_report_opened'); }}
                             className="w-12 h-12 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-belluh-500 hover:border-belluh-200 shadow-sm transition-all group"
                          >
                             <BookOpen size={20} strokeWidth={1.5} className="group-hover:scale-110 transition-transform"/>
                          </button>
-                    </div>
-                )}
+                     )}
+                </div>
              </div>
 
              {/* Forecast */}
-             {forecast && !isConstellation && !isArchived && (
+             {forecast && !isConstellation && !isArchived && showPatterns && (
                  <div className="mb-6 animate-scale-in">
                      <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-float flex items-center gap-5 relative overflow-hidden">
                          <div className="absolute top-0 left-0 w-1 h-full bg-[#f0addd]"></div>

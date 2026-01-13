@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles, Maximize2, Eye, EyeOff, MoveDiagonal, RefreshCw } from 'lucide-react';
+import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt, ColorTheme } from '../types';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles, Maximize2, Eye, EyeOff, MoveDiagonal, RefreshCw, Palette } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
+import { THEMES } from '../constants';
 
 interface ProfileProps {
   user: User;
@@ -363,6 +364,8 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       <div className="px-6 flex justify-end mb-8">
           <button onClick={() => setShowSettingsModal(true)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 shadow-soft border border-slate-50"><Settings size={20} /></button>
       </div>
+      
+      {/* ... rest of the component (omitted for brevity, assume unchanged logic) ... */}
       <div className="px-6 mb-10 flex justify-center">
           <div className="bg-white border border-slate-100 p-1 rounded-full flex w-[180px] shadow-sm">
               <button onClick={() => setActiveTab('us')} className={`flex-1 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === 'us' ? 'bg-slate-900 text-white' : 'text-slate-400'}`}>Us</button>
@@ -468,11 +471,11 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                   <FactCard id="anniversary" label="Anniversary" date={facts.anniversary} setDate={(d: Date) => setFacts({...facts, anniversary: d})} isEditing={isEditingFacts} icon={Sparkles} theme="amber" config={factConfigs.anniversary} onToggleHidden={toggleHidden} onCycleSize={cycleSize} mode="future" />
                                   <FactCard id="partnerBday" label="Partner B-Day" date={facts.partnerBday} setDate={(d: Date) => setFacts({...facts, partnerBday: d})} isEditing={isEditingFacts} icon={Gift} theme="orange" config={factConfigs.partnerBday} onToggleHidden={toggleHidden} onCycleSize={cycleSize} mode="future" />
                               </div>
-                              {isEditingFacts && Object.values(factConfigs).some(c => c.hidden) && (
+                              {isEditingFacts && Object.values(factConfigs).some((c: any) => c.hidden) && (
                                   <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Hidden Items</p>
                                       <div className="flex gap-2 flex-wrap">
-                                          {Object.entries(factConfigs).filter(([_, c]) => c.hidden).map(([key, _]) => (
+                                          {Object.entries(factConfigs).filter(([_, c]: [string, any]) => c.hidden).map(([key, _]) => (
                                               <button key={key} onClick={() => toggleHidden(key)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-2"><Eye size={12} /> Restore {key}</button>
                                           ))}
                                       </div>
@@ -630,6 +633,25 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowSettingsModal(false)}>
               <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
                   <h3 className="font-serif text-2xl mb-8 text-slate-900">Settings</h3>
+                  
+                  {/* Theme Selector */}
+                  <div className="mb-8">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Palette size={14} /> Color Theme
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                          {Object.keys(THEMES).map((themeKey) => (
+                              <button
+                                key={themeKey}
+                                onClick={() => onUpdateUser({ settings: { ...user.settings, colorTheme: themeKey as ColorTheme } })}
+                                className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 active:scale-95 ${user.settings.colorTheme === themeKey ? 'border-slate-900 shadow-lg scale-110' : 'border-transparent'}`}
+                                style={{ backgroundColor: THEMES[themeKey as ColorTheme][300] }}
+                                title={themeKey.charAt(0).toUpperCase() + themeKey.slice(1)}
+                              />
+                          ))}
+                      </div>
+                  </div>
+
                   <div className="space-y-1">
                     <button onClick={() => onShowLegal('tos')} className="w-full py-3 flex items-center justify-between text-slate-500 hover:bg-slate-50 rounded-xl px-2"><span className="text-sm font-bold">Terms of Service</span><ChevronRight size={16} /></button>
                     <button onClick={() => onShowLegal('privacy')} className="w-full py-3 flex items-center justify-between text-slate-500 hover:bg-slate-50 rounded-xl px-2"><span className="text-sm font-bold">Privacy Policy</span><ChevronRight size={16} /></button>
@@ -640,6 +662,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           </div>
       )}
 
+      {/* ... Other Modals (Receipt, Invite, EditProfile) kept as is ... */}
       {/* Receipt Modal */}
       {showReceipt && (
            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowReceipt(false)}>

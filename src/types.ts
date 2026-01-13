@@ -55,10 +55,13 @@ export interface Circle {
   endDate?: Date;
 }
 
+export type ColorTheme = 'pink' | 'blue' | 'green' | 'peach' | 'lavender' | 'butter';
+
 export interface UserSettings {
   notifications: boolean;
   biometricLock: boolean;
   theme: 'light' | 'dark' | 'system';
+  colorTheme: ColorTheme;
   dailyReminderTime: string;
 }
 

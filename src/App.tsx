@@ -11,8 +11,8 @@ import About from './pages/About';
 import AdminMetrics from './pages/AdminMetrics';
 import LegalModal from './components/LegalModal';
 import ArtifactModal from './components/ArtifactModal';
-import { CURRENT_USER, MOCK_INSIGHTS } from './constants';
-import { JournalEntry, EntryType, Mood, User, CircleType, CircleStatus } from './types';
+import { CURRENT_USER, MOCK_INSIGHTS, THEMES } from './constants';
+import { JournalEntry, EntryType, Mood, User, CircleType, CircleStatus, ColorTheme } from './types';
 import { Sparkles, X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import { useAdminAccess } from './hooks/useAdminAccess';
@@ -131,6 +131,25 @@ const App: React.FC = () => {
   // STEALTH ADMIN ACCESS HOOK
   const { showAdmin, setShowAdmin, isUserAdmin } = useAdminAccess(user.id);
 
+  // Apply Theme
+  useEffect(() => {
+    const root = document.documentElement;
+    const theme = THEMES[user.settings.colorTheme] || THEMES.pink;
+    
+    // Set colors
+    Object.entries(theme).forEach(([key, value]) => {
+      root.style.setProperty(`--color-belluh-${key}`, value as string);
+    });
+
+    // Helper for RGB shadow glow
+    const hex = theme[300] as string; // e.g., #f0addd
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    root.style.setProperty('--color-belluh-300-rgb', `${r}, ${g}, ${b}`);
+
+  }, [user.settings.colorTheme]);
+
   // --- Auth Helpers ---
 
   const resetUserState = () => {
@@ -207,9 +226,6 @@ const App: React.FC = () => {
         }
 
         // 3. Fetch All Journal Entries (Content + System Data)
-        // We need to fetch entries for ANYONE who might be in a shared circle.
-        // For now, we start with my entries + connected partners' entries. 
-        // We might fetch more if we find extended circle memberships.
         const initialUserIds = [sessionUser.id, ...connectedUserIds];
         const { data: dbEntries } = await supabase
             .from('journal_entries')
@@ -217,8 +233,6 @@ const App: React.FC = () => {
             .in('user_id', initialUserIds)
             .order('created_at', { ascending: false });
 
-        // 3b. Identify extended members from Custom Circles/System Tags
-        // If I am in a circle with someone not in `connectedUserIds`, I need their profile too.
         let extendedMemberIds: string[] = [];
         if (dbEntries) {
              const memberEntries = dbEntries.filter((e: any) => e.tags && e.tags.includes('system_circle_member'));
@@ -245,7 +259,6 @@ const App: React.FC = () => {
         const newCircles: any[] = [];
         const myFirstName = myProfile?.full_name?.trim().split(' ')[0] || sessionUser.email?.split('@')[0] || 'Me';
         
-        // Helper to find circle metadata overrides (Rename/Archive status)
         const getCircleMetadata = (circleId: string) => {
             const metaEntry = dbEntries?.find((e: any) => 
                 e.tags && e.tags.includes('system_circle_metadata') && e.tags.includes(`circle:${circleId}`)
@@ -256,7 +269,6 @@ const App: React.FC = () => {
             };
         };
 
-        // Helper to find extra members added via tags
         const getExtraMembers = (circleId: string) => {
             const members: string[] = [];
             if (dbEntries) {
@@ -271,26 +283,18 @@ const App: React.FC = () => {
             return members;
         };
 
-        // A. Base Circles from Connections (One per partner, or default)
         if (connectedProfiles.length > 0) {
             connectedProfiles.forEach((pProfile, index) => {
-                // Default Name
                 const partnerFirstName = pProfile.full_name?.trim().split(' ')[0] || 'Partner';
                 let circleName = `${myFirstName} & ${partnerFirstName}`;
-                
-                // Circle ID
                 const circleId = index === 0 ? 'c1' : `partner_${pProfile.id}`;
-                
-                // Check Metadata Overrides
                 const meta = getCircleMetadata(circleId);
                 if (meta.name) circleName = meta.name;
 
-                // Build Members List (Base + Extras)
                 const baseMembers = [sessionUser.id, pProfile.id];
                 const extraMembers = getExtraMembers(circleId);
                 const allMembers = [...new Set([...baseMembers, ...extraMembers])];
 
-                // Build Profiles List
                 const profiles = allMembers.map(mid => {
                     const prof = allProfiles?.find((p: any) => p.id === mid);
                     return {
@@ -313,14 +317,10 @@ const App: React.FC = () => {
                 });
             });
         } else {
-             // Solo Circle
              const circleId = 'c1';
              const meta = getCircleMetadata(circleId);
-             
-             // Check for extra members in solo circle (maybe invited but not connected yet fully? rare case)
              const extraMembers = getExtraMembers(circleId);
              const allMembers = [...new Set([sessionUser.id, ...extraMembers])];
-             
              const profiles = allMembers.map(mid => {
                 const prof = allProfiles?.find((p: any) => p.id === mid);
                 return {
@@ -341,15 +341,12 @@ const App: React.FC = () => {
              });
         }
 
-        // B. Custom Circles (from System Entries)
         if (dbEntries) {
             const systemEntries = dbEntries.filter((e: any) => e.tags && e.tags.includes('system_circle_def'));
-            
             systemEntries.forEach((e: any) => {
                 const baseMembers = [e.user_id]; 
-                const extraMembers = getExtraMembers(e.id); // Check system_circle_member for this custom circle ID
+                const extraMembers = getExtraMembers(e.id);
                 const allMembers = [...new Set([...baseMembers, ...extraMembers])];
-
                 const profiles = allMembers.map(mid => {
                     const prof = allProfiles?.find((p: any) => p.id === mid);
                     return {
@@ -358,9 +355,7 @@ const App: React.FC = () => {
                         avatar: prof?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${mid}`
                     };
                 });
-
                 const isArchived = e.tags && e.tags.includes('status:archived');
-
                 newCircles.push({
                     id: e.id,
                     name: e.title || 'Untitled Circle',
@@ -374,7 +369,6 @@ const App: React.FC = () => {
             });
         }
 
-        // 6. Pending Invites
         const { data: pendingRows } = await supabase
             .from('partner_connections')
             .select('*')
@@ -383,9 +377,7 @@ const App: React.FC = () => {
         
         if (pendingRows && pendingRows.length > 0) {
             const inviterIds = pendingRows.map((r: any) => r.user_id);
-            // We likely already fetched these profiles in step 4 if they were related, but ensure coverage:
             const { data: inviters } = await supabase.from('profiles').select('*').in('id', inviterIds);
-            
             const invites: PendingInvite[] = pendingRows.map((r: any) => {
                 const inviter = inviters?.find((p: any) => p.id === r.user_id);
                 return {
@@ -402,7 +394,6 @@ const App: React.FC = () => {
             setPendingInvites([]);
         }
 
-        // 7. Relationship Facts & Content
         let relationshipFacts = '';
         if (dbEntries) {
             const factsEntry = dbEntries.find((e: any) => e.tags && e.tags.includes('system_facts'));
@@ -455,13 +446,15 @@ const App: React.FC = () => {
         });
         setEntries(mappedEntries);
 
-        // Update User State
         const currentStreak = myProfile?.journal_streak || 0;
         setStreak(currentStreak);
 
         const primaryPartner = connectedProfiles.length > 0 ? connectedProfiles[0] : null;
         const displayPartnerName = myProfile?.partner_name || primaryPartner?.full_name || undefined;
 
+        // Parse user settings if available in profile (assuming we store them later, for now defaults)
+        // Here we just use default, could expand profile table to store settings JSON
+        
         setUser(prev => ({ 
             ...prev, 
             id: sessionUser.id, 
@@ -472,7 +465,7 @@ const App: React.FC = () => {
             circles: newCircles as any,
             activeCircleId: 'c1', 
             isPremium: false,
-            settings: CURRENT_USER.settings,
+            settings: CURRENT_USER.settings, // In a real app, merge with saved settings
             hasCompletedOnboarding: !!displayPartnerName,
             relationshipFacts: relationshipFacts
         }));
@@ -536,12 +529,7 @@ const App: React.FC = () => {
       }
   };
 
-  const updateStreakLogic = async (userId: string) => {
-    // ... (logic remains same, omitted for brevity)
-  };
-
   const handleOnboardingComplete = async (partnerName: string, firstEntry: string) => {
-    // ... (logic remains same)
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) return;
     
@@ -556,10 +544,8 @@ const App: React.FC = () => {
         date: new Date().toISOString()
     }]);
     
-    // Quick local update
     setUser(prev => ({ ...prev, partnerName, hasCompletedOnboarding: true }));
     setIsOnboarding(false);
-    // Reload full data to sync
     loadUserData(currentUser);
   };
 
@@ -568,6 +554,14 @@ const App: React.FC = () => {
           setUser(prev => ({ ...prev, ...updates }));
           return;
       }
+      
+      // Theme Update
+      if (updates.settings) {
+          setUser(prev => ({ ...prev, settings: { ...prev.settings, ...updates.settings } }));
+          // Ideally save to DB here
+          return;
+      }
+
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
@@ -606,16 +600,13 @@ const App: React.FC = () => {
       }
   };
 
-  // Enhanced Rename to support generated circles (via metadata)
   const handleRenameCircle = async (circleId: string, newName: string) => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      // Check if it's a Custom Circle (defined by entry ID)
       const isCustom = user.circles.find(c => c.id === circleId && c.type === CircleType.Custom && !c.id.startsWith('c1') && !c.id.startsWith('partner_'));
 
       if (isCustom) {
-          // Update the definition entry
           const { error } = await supabase.from('journal_entries').update({ title: newName }).eq('id', circleId);
           if (!error) {
               setUser(prev => ({
@@ -625,8 +616,6 @@ const App: React.FC = () => {
               showNotification('Circle renamed', 'success');
           }
       } else {
-          // Generated circle (c1 or partner_...): Upsert Metadata Entry
-          // Check for existing metadata entry for this circle
           const { data: existingMeta } = await supabase
             .from('journal_entries')
             .select('id, tags')
@@ -654,7 +643,6 @@ const App: React.FC = () => {
       }
   };
 
-  // Enhanced Archive to support generated circles
   const handleArchiveCircle = async (circleId: string) => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
@@ -665,7 +653,6 @@ const App: React.FC = () => {
       const isArchiving = circle.status === CircleStatus.Active;
       const newStatus = isArchiving ? CircleStatus.Archived : CircleStatus.Active;
 
-      // Check if Custom
       const isCustom = circle.type === CircleType.Custom && !circle.id.startsWith('c1') && !circle.id.startsWith('partner_');
 
       if (isCustom) {
@@ -677,7 +664,6 @@ const App: React.FC = () => {
               await supabase.from('journal_entries').update({ tags: newTags }).eq('id', circleId);
           }
       } else {
-          // Generated Circle: Use Metadata
           const { data: existingMeta } = await supabase
             .from('journal_entries')
             .select('id, tags')
@@ -716,7 +702,6 @@ const App: React.FC = () => {
               .eq('id', connectionId);
           if (error) throw error;
           showNotification('Invite accepted!', 'success');
-          // Reload to sync circles
           const { data: { user } } = await supabase.auth.getUser();
           if (user) loadUserData(user);
       } catch (error) {
@@ -772,7 +757,6 @@ const App: React.FC = () => {
 
     if (data && !error) {
          trackEvent('journal_entry_created', { type, mood });
-         // ... (update entries locally)
          const newEntry: JournalEntry = {
             id: data.id,
             userId: currentUser.id,
