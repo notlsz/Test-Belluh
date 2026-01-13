@@ -4,22 +4,22 @@ import { User, JournalEntry, EntryType, Mood, Insight, Circle, CircleType, Circl
 
 export const THEMES: Record<ColorTheme, Record<number, string>> = {
   pink: {
-    50: '#FFF5F7', 100: '#FFE4E9', 200: '#FFD0DB', 300: '#FFC5D3', 400: '#FFB0C0', 500: '#FF90A5', 600: '#E11D48', 900: '#881337'
+    25: '#FFFCFD', 50: '#FFF5F7', 100: '#FFE4E9', 200: '#FFD0DB', 300: '#FFC5D3', 400: '#FFB0C0', 500: '#FF90A5', 600: '#E11D48', 900: '#881337'
   },
   blue: {
-    50: '#F0F7FF', 100: '#E0F0FF', 200: '#D0E8FF', 300: '#BFD7FF', 400: '#A0C5FF', 500: '#80B0FF', 600: '#2563EB', 900: '#1E3A8A'
+    25: '#F8FBFF', 50: '#F0F7FF', 100: '#E0F0FF', 200: '#D0E8FF', 300: '#BFD7FF', 400: '#93C5FD', 500: '#60A5FA', 600: '#2563EB', 900: '#1E3A8A'
   },
   green: {
-    50: '#F2FFF0', 100: '#E5FFE0', 200: '#DCFCE7', 300: '#D4F4CD', 400: '#B0EBA0', 500: '#8CD975', 600: '#16A34A', 900: '#14532D'
+    25: '#F9FCFA', 50: '#F2FBF5', 100: '#E6F7EB', 200: '#DCFCE7', 300: '#D4F4CD', 400: '#86EFAC', 500: '#4ADE80', 600: '#16A34A', 900: '#14532D'
   },
   peach: {
-    50: '#FFF8F0', 100: '#FFF0E0', 200: '#FFE5D0', 300: '#FFD6A5', 400: '#FFC080', 500: '#FFA050', 600: '#EA580C', 900: '#7C2D12'
+    25: '#FFFAF8', 50: '#FFF8F4', 100: '#FFF1E6', 200: '#FFE5D0', 300: '#FFD6A5', 400: '#FDBA74', 500: '#FB923C', 600: '#EA580C', 900: '#7C2D12'
   },
   lavender: {
-    50: '#F8F0FF', 100: '#F0E0FF', 200: '#E9D5FF', 300: '#E9D5FF', 400: '#D8B4FE', 500: '#C084FC', 600: '#9333EA', 900: '#581C87'
+    25: '#FBF9FF', 50: '#F7F4FF', 100: '#F3E8FF', 200: '#E9D5FF', 300: '#D8B4FE', 400: '#C084FC', 500: '#A855F7', 600: '#9333EA', 900: '#581C87'
   },
   butter: {
-    50: '#FFFCF0', 100: '#FFF9DB', 200: '#FEF08A', 300: '#FFF1B8', 400: '#FFE082', 500: '#FACC15', 600: '#CA8A04', 900: '#713F12'
+    25: '#FFFEFA', 50: '#FFFDF2', 100: '#FFF9DB', 200: '#FEF08A', 300: '#FFF1B8', 400: '#FACC15', 500: '#EAB308', 600: '#CA8A04', 900: '#713F12'
   }
 };
 

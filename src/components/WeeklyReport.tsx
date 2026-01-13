@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { X, Activity, Zap, TrendingUp, Heart, ArrowRight } from 'lucide-react';
 import { JournalEntry, Mood } from '../types';
@@ -144,7 +143,7 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ onClose, onTryRitual, entri
            </button>
            
            <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 bg-belluh-50 text-belluh-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+              <span className="px-3 py-1 bg-belluh-50 text-belluh-600 rounded-full text-[10px] font-bold uppercase tracking-widest animate-pulse">
                 Real-Time Analysis
               </span>
               <span className="text-slate-300 text-xs">•</span>
@@ -194,14 +193,14 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ onClose, onTryRitual, entri
                     
                     <div className="flex items-center justify-between mb-6">
                          <div className="text-center">
-                             <div className="text-3xl font-bold text-cyan-950 mb-1">
+                             <div className={`text-3xl font-bold mb-1 ${stats.gratitudeChange < 0 ? 'text-cyan-700 opacity-60' : 'text-cyan-950'}`}>
                                 {stats.gratitudeChange > 0 ? '+' : ''}{stats.gratitudeChange}%
                              </div>
                              <div className="text-[10px] text-cyan-700 uppercase tracking-widest">Gratitude</div>
                          </div>
                          <div className="h-px bg-cyan-800/20 flex-1 mx-4"></div>
                          <div className="text-center">
-                             <div className="text-3xl font-bold text-[#f0addd] mb-1 drop-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                             <div className={`text-3xl font-bold mb-1 drop-shadow-sm ${stats.intimacyChange < 0 ? 'text-cyan-700 opacity-60' : 'text-[#f0addd]'}`} style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                                 {stats.intimacyChange > 0 ? '+' : ''}{stats.intimacyChange}%
                              </div>
                              <div className="text-[10px] text-cyan-700 uppercase tracking-widest">Intimacy</div>

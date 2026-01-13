@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Insight, ChatMessage, RelationshipArchetype, UserPersona } from '../types';
 import { chatWithBelluh, generateDailyReflection, getRelationshipArchetype, softenConflictMessage, detectPersonaFromEntries } from '../services/geminiService';
@@ -141,8 +140,8 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-transparent">
          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors">
-                <span className="text-sm font-bold font-serif text-slate-700">Belluh</span>
-                <span className="text-slate-300">/</span>
+                <span className="text-sm font-bold font-serif text-belluh-900">Belluh</span>
+                <span className="text-belluh-200">/</span>
                 <span className="text-sm font-medium text-slate-500">{detectedPersona} Mode</span>
             </div>
             {isConflictMode && (
@@ -159,12 +158,12 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                
                {/* Context Card */}
                {reflection && messages.length === 1 && (
-                   <div className="mb-12 animate-fade-in">
-                        <div className="flex items-center gap-2 mb-3 opacity-50">
+                   <div className="mb-12 animate-fade-in bg-belluh-50/50 p-6 rounded-3xl border border-belluh-100">
+                        <div className="flex items-center gap-2 mb-3 text-belluh-400">
                             <Activity size={14} />
                             <span className="text-xs font-bold uppercase tracking-widest">Current Context</span>
                         </div>
-                        <h2 className="text-xl md:text-2xl font-serif text-slate-800 leading-relaxed italic opacity-80">
+                        <h2 className="text-xl md:text-2xl font-serif text-belluh-900 leading-relaxed italic opacity-90">
                             "{reflection}"
                         </h2>
                    </div>
@@ -181,7 +180,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                        `}>
                            {msg.role === 'model' ? (
                                <div className="flex gap-4 md:gap-6">
-                                   <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
+                                   <div className="w-8 h-8 rounded-full bg-belluh-600 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
                                        <Sparkles size={14} />
                                    </div>
                                    <div className="prose prose-slate prose-p:font-serif prose-p:text-lg prose-p:leading-loose max-w-none whitespace-pre-wrap">
@@ -197,13 +196,13 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
 
                 {isTyping && (
                     <div className="flex gap-4 md:gap-6 animate-fade-in pl-0">
-                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-belluh-600 flex items-center justify-center text-white shrink-0 shadow-sm">
                             <Sparkles size={14} />
                         </div>
                         <div className="flex items-center gap-1.5 mt-2">
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
+                            <span className="w-1.5 h-1.5 bg-belluh-300 rounded-full animate-bounce"></span>
+                            <span className="w-1.5 h-1.5 bg-belluh-300 rounded-full animate-bounce" style={{animationDelay: '0.15s'}}></span>
+                            <span className="w-1.5 h-1.5 bg-belluh-300 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></span>
                         </div>
                     </div>
                 )}
@@ -235,7 +234,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                     w-full relative rounded-[2rem] shadow-2xl transition-all duration-300 border flex items-center p-2 pr-3 min-h-[64px] bg-white
                     ${isConflictMode 
                         ? 'shadow-rose-100/50 border-rose-100' 
-                        : 'shadow-slate-200/50 border-slate-200 focus-within:shadow-slate-300/60 focus-within:border-slate-300'
+                        : 'shadow-slate-200/50 border-slate-200 focus-within:shadow-belluh-200/60 focus-within:border-belluh-200'
                     }
                 `}>
                     <textarea
@@ -258,7 +257,7 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                         className={`
                             w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ml-2
                             ${chatInput.trim() 
-                                ? 'bg-slate-900 text-white hover:bg-black active:scale-95' 
+                                ? 'bg-belluh-600 text-white hover:bg-belluh-700 active:scale-95' 
                                 : 'bg-slate-100 text-slate-300'
                             }
                         `}
