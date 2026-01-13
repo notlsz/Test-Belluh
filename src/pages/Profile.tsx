@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles, Maximize2, Eye, EyeOff, MoveDiagonal } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -67,8 +67,35 @@ const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onEd
     );
 };
 
+// --- Helper for Relative Date Display ---
+const getRelativeDisplay = (date: Date, type: 'past' | 'future' | 'auto') => {
+    if (!date || isNaN(date.getTime())) return '--';
+    const now = new Date();
+    
+    // Reset hours for clean day calc
+    const d1 = new Date(date); d1.setHours(0,0,0,0);
+    const d2 = new Date(now); d2.setHours(0,0,0,0);
+    
+    const diffTime = d1.getTime() - d2.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === -1) return 'Yesterday';
+
+    if (type === 'future' || (type === 'auto' && diffDays > 0)) {
+        // Ensure we are looking at future
+        return `${Math.abs(diffDays)} Days Away`;
+    }
+    
+    // Past
+    return `${Math.abs(diffDays)} Days Ago`;
+};
+
 // --- NEW COMPONENT: Interactive Fact Card ---
-const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) => {
+const FactCard = ({ 
+    id, label, date, setDate, isEditing, icon: Icon, theme, config, onToggleHidden, onCycleSize, mode = 'past' 
+}: any) => {
     const themes: any = {
         blue: "bg-blue-50 border-blue-100 text-blue-900 hover:shadow-blue-100/50",
         rose: "bg-rose-50 border-rose-100 text-rose-900 hover:shadow-rose-100/50",
@@ -79,13 +106,19 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
     };
     
     const currentTheme = themes[theme] || themes.blue;
-
-    // Robust Date Validation to prevent RangeErrors
     const isValid = date instanceof Date && !isNaN(date.getTime());
     const displayValue = isValid ? date.toISOString().split('T')[0] : '';
 
+    // Sizing Classes
+    let sizeClasses = "col-span-1 h-48"; // Standard
+    if (config.size === 'wide') sizeClasses = "col-span-2 h-48";
+    if (config.size === 'tall') sizeClasses = "col-span-1 h-[25rem] row-span-2";
+    if (config.size === 'big') sizeClasses = "col-span-2 h-[25rem] row-span-2";
+
+    if (config.hidden && !isEditing) return null;
+
     return (
-        <div className={`relative overflow-hidden rounded-[2rem] p-6 h-48 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl border ${currentTheme} group`}>
+        <div className={`relative overflow-hidden rounded-[2rem] p-6 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl border ${currentTheme} ${sizeClasses} group ${config.hidden ? 'opacity-50 grayscale border-dashed' : ''}`}>
             {/* Decorative Background */}
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl transition-all group-hover:scale-150"></div>
             <Icon className="absolute -bottom-6 -right-6 w-32 h-32 opacity-[0.08] group-hover:opacity-[0.15] transition-all duration-500 rotate-12" />
@@ -95,11 +128,22 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
                     {label}
                     {isEditing && <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse"></div>}
                 </span>
+                
+                {isEditing && (
+                    <div className="flex gap-1">
+                        <button onClick={() => onCycleSize(id)} className="p-1.5 bg-black/10 hover:bg-black/20 rounded-full text-current transition-colors" title="Resize">
+                            <MoveDiagonal size={12} />
+                        </button>
+                        <button onClick={() => onToggleHidden(id)} className="p-1.5 bg-black/10 hover:bg-black/20 rounded-full text-current transition-colors" title={config.hidden ? "Show" : "Hide"}>
+                            {config.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="relative z-10">
                 {isEditing ? (
-                    <div className="bg-white/30 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-sm">
+                    <div className="bg-white/30 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-sm mt-2">
                         <input 
                             type="date" 
                             value={displayValue}
@@ -116,11 +160,11 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
                     </div>
                 ) : (
                     <>
-                        <div className="text-3xl md:text-4xl font-serif font-medium tracking-tight leading-tight mb-1">
-                            {isValid ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
+                        <div className={`${config.size === 'big' || config.size === 'wide' ? 'text-4xl md:text-5xl' : 'text-3xl md:text-4xl'} font-serif font-medium tracking-tight leading-tight mb-1`}>
+                            {isValid ? getRelativeDisplay(date, mode) : '--'}
                         </div>
                         <div className="text-sm font-medium opacity-60">
-                            {isValid ? date.getFullYear() : ''}
+                            {isValid ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
                         </div>
                     </>
                 )}
@@ -129,25 +173,43 @@ const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) =
     );
 };
 
-// --- NEW COMPONENT: Calculated Stat Card ---
-const StatCard = ({ label, value, subtext, icon: Icon, theme }: any) => {
+// --- NEW COMPONENT: Calculated Stat Card (Wrapped for sizing) ---
+const StatCard = ({ id, label, value, subtext, icon: Icon, theme, config, onToggleHidden, onCycleSize, isEditing }: any) => {
     const themes: any = {
         slate: "bg-slate-900 text-white shadow-xl shadow-slate-200/50",
         white: "bg-white text-slate-900 border border-slate-100 shadow-sm"
     };
     const currentTheme = themes[theme] || themes.white;
 
+    // Sizing Classes
+    let sizeClasses = "col-span-1 h-48"; 
+    if (config.size === 'wide') sizeClasses = "col-span-2 h-48";
+    if (config.size === 'tall') sizeClasses = "col-span-1 h-[25rem] row-span-2";
+    if (config.size === 'big') sizeClasses = "col-span-2 h-[25rem] row-span-2";
+
+    if (config.hidden && !isEditing) return null;
+
     return (
-        <div className={`relative overflow-hidden rounded-[2rem] p-6 h-48 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl ${currentTheme} group`}>
+        <div className={`relative overflow-hidden rounded-[2rem] p-6 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl ${currentTheme} ${sizeClasses} group ${config.hidden ? 'opacity-50 grayscale border-dashed border-2 border-slate-300' : ''}`}>
              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-bl-full pointer-events-none"></div>
              <Icon className={`absolute -bottom-4 -right-4 w-24 h-24 transition-all duration-500 rotate-12 ${theme === 'slate' ? 'opacity-[0.05] text-white' : 'opacity-[0.05] text-slate-900'}`} />
 
-             <div className="relative z-10">
+             <div className="relative z-10 flex justify-between items-start">
                 <span className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'slate' ? 'text-slate-400' : 'text-slate-400'}`}>{label}</span>
+                {isEditing && (
+                    <div className="flex gap-1">
+                        <button onClick={() => onCycleSize(id)} className="p-1.5 bg-white/20 hover:bg-white/30 rounded-full text-current transition-colors" title="Resize">
+                            <MoveDiagonal size={12} />
+                        </button>
+                        <button onClick={() => onToggleHidden(id)} className="p-1.5 bg-white/20 hover:bg-white/30 rounded-full text-current transition-colors" title={config.hidden ? "Show" : "Hide"}>
+                            {config.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                    </div>
+                )}
              </div>
 
              <div className="relative z-10">
-                 <div className="text-4xl md:text-5xl font-serif font-medium tracking-tighter leading-none mb-2">
+                 <div className={`${config.size === 'big' || config.size === 'wide' ? 'text-5xl md:text-6xl' : 'text-4xl md:text-5xl'} font-serif font-medium tracking-tighter leading-none mb-2`}>
                      {value}
                  </div>
                  <div className={`text-xs font-bold uppercase tracking-wider ${theme === 'slate' ? 'text-slate-400' : 'text-slate-400'}`}>
@@ -186,6 +248,18 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
     partnerBday: new Date(),
     anniversary: new Date()
   });
+  
+  // Configuration State for Cards
+  const [factConfigs, setFactConfigs] = useState<Record<string, { size: 'standard' | 'wide' | 'tall' | 'big'; hidden: boolean }>>({
+      timeTogether: { size: 'standard', hidden: false },
+      nextAnniversary: { size: 'standard', hidden: false },
+      firstMet: { size: 'standard', hidden: false },
+      firstKiss: { size: 'standard', hidden: false },
+      firstDate: { size: 'standard', hidden: false },
+      partnerBday: { size: 'standard', hidden: false },
+      anniversary: { size: 'standard', hidden: false }, // The editable date field
+  });
+
   const [isEditingFacts, setIsEditingFacts] = useState(false);
 
   // Avatar Upload State
@@ -405,6 +479,19 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
     onShowToast("Relationship facts updated", "success");
   };
 
+  const cycleSize = (id: string) => {
+      setFactConfigs(prev => {
+          const sizes: ('standard' | 'wide' | 'tall' | 'big')[] = ['standard', 'wide', 'tall', 'big'];
+          const current = prev[id]?.size || 'standard';
+          const next = sizes[(sizes.indexOf(current) + 1) % sizes.length];
+          return { ...prev, [id]: { ...prev[id], size: next } };
+      });
+  };
+
+  const toggleHidden = (id: string) => {
+      setFactConfigs(prev => ({ ...prev, [id]: { ...prev[id], hidden: !prev[id].hidden } }));
+  };
+
   const currentColor = RECEIPT_COLORS[receiptColorIdx];
 
   return (
@@ -432,8 +519,8 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           <div className="flex items-center gap-3">
                               <img src={invite.inviter.avatar} alt="Inviter" className="w-10 h-10 rounded-full bg-slate-100 object-cover" />
                               <div>
-                                  <p className="text-sm font-bold text-slate-900">{invite.inviter.name}</p>
-                                  <p className="text-xs text-slate-500">Wants to connect journals</p>
+                                  <p className="text-sm font-bold text-slate-900">Connect with {invite.inviter.name}</p>
+                                  <p className="text-xs text-slate-500">{invite.inviter.name} wants to link journals</p>
                               </div>
                           </div>
                           <div className="flex gap-2">
@@ -510,18 +597,24 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                   </button>
                               </div>
 
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 auto-rows-auto">
                                   {/* Days Together - High Contrast Stat */}
                                   <StatCard 
+                                      id="timeTogether"
                                       label="Time Together"
                                       value={!isNaN(facts.firstMet.getTime()) ? `${Math.floor((new Date().getTime() - facts.firstMet.getTime()) / (1000 * 60 * 60 * 24))}d` : '--'}
                                       subtext="And counting"
                                       icon={Clock}
                                       theme="slate"
+                                      config={factConfigs.timeTogether}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      isEditing={isEditingFacts}
                                   />
 
                                   {/* Anniversary Countdown - High Contrast Stat */}
                                   <StatCard 
+                                      id="nextAnniversary"
                                       label="Next Anniversary"
                                       value={(() => {
                                           if (isNaN(facts.anniversary.getTime())) return '--';
@@ -534,58 +627,101 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                       subtext="Days Away"
                                       icon={Infinity}
                                       theme="white"
+                                      config={factConfigs.nextAnniversary}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      isEditing={isEditingFacts}
                                   />
 
                                   {/* First Met */}
                                   <FactCard 
+                                      id="firstMet"
                                       label="First Met"
                                       date={facts.firstMet}
                                       setDate={(d: Date) => setFacts({...facts, firstMet: d})}
                                       isEditing={isEditingFacts}
                                       icon={Users}
                                       theme="blue"
+                                      config={factConfigs.firstMet}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      mode="past"
                                   />
 
                                   {/* First Kiss */}
                                   <FactCard 
+                                      id="firstKiss"
                                       label="First Kiss"
                                       date={facts.firstKiss}
                                       setDate={(d: Date) => setFacts({...facts, firstKiss: d})}
                                       isEditing={isEditingFacts}
                                       icon={Heart}
                                       theme="rose"
+                                      config={factConfigs.firstKiss}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      mode="past"
                                   />
 
                                   {/* First Date */}
                                   <FactCard 
+                                      id="firstDate"
                                       label="First Date"
                                       date={facts.firstDate}
                                       setDate={(d: Date) => setFacts({...facts, firstDate: d})}
                                       isEditing={isEditingFacts}
                                       icon={Calendar}
                                       theme="purple"
+                                      config={factConfigs.firstDate}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      mode="past"
                                   />
 
                                   {/* Anniversary (Editable) */}
                                   <FactCard 
+                                      id="anniversary"
                                       label="Anniversary"
                                       date={facts.anniversary}
                                       setDate={(d: Date) => setFacts({...facts, anniversary: d})}
                                       isEditing={isEditingFacts}
                                       icon={Sparkles}
                                       theme="amber"
+                                      config={factConfigs.anniversary}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      mode="future"
                                   />
 
                                   {/* Partner Birthday */}
                                   <FactCard 
+                                      id="partnerBday"
                                       label="Partner B-Day"
                                       date={facts.partnerBday}
                                       setDate={(d: Date) => setFacts({...facts, partnerBday: d})}
                                       isEditing={isEditingFacts}
                                       icon={Gift}
                                       theme="orange"
+                                      config={factConfigs.partnerBday}
+                                      onToggleHidden={toggleHidden}
+                                      onCycleSize={cycleSize}
+                                      mode="future"
                                   />
                               </div>
+                              
+                              {/* Hidden Items Indicator in Edit Mode */}
+                              {isEditingFacts && Object.values(factConfigs).some(c => c.hidden) && (
+                                  <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Hidden Items</p>
+                                      <div className="flex gap-2 flex-wrap">
+                                          {Object.entries(factConfigs).filter(([_, c]) => c.hidden).map(([key, _]) => (
+                                              <button key={key} onClick={() => toggleHidden(key)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-2">
+                                                  <Eye size={12} /> Restore {key}
+                                              </button>
+                                          ))}
+                                      </div>
+                                  </div>
+                              )}
                           </div>
                       )}
                       
@@ -963,6 +1099,60 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                    </div>
                )}
            </div>
+      )}
+
+      {/* Partner Invite Modal Dialog */}
+      {showInviteModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowInviteModal(false)}>
+              <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-serif text-2xl text-slate-900">Invite Partner</h3>
+                    <button onClick={() => setShowInviteModal(false)}><X size={20} className="text-slate-400"/></button>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-6">Share a link or invite via email to connect your journals.</p>
+                  
+                  {inviteStatus === 'sent' ? (
+                      <div className="text-center py-6 animate-pop">
+                          <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 size={32}/></div>
+                          <p className="font-bold text-slate-900">Invite Sent!</p>
+                      </div>
+                  ) : (
+                      <div className="space-y-6">
+                          <button 
+                            onClick={handleCopyInviteLink}
+                            className="w-full bg-belluh-50 text-belluh-600 border border-belluh-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-belluh-100 transition-all"
+                          >
+                              <LinkIcon size={16} />
+                              <span>Copy Invite Link</span>
+                          </button>
+
+                          <div className="relative">
+                              <div className="absolute inset-0 flex items-center">
+                                  <div className="w-full border-t border-slate-100"></div>
+                              </div>
+                              <div className="relative flex justify-center text-xs">
+                                  <span className="bg-white px-2 text-slate-400 font-medium">OR VIA EMAIL</span>
+                              </div>
+                          </div>
+
+                          <form onSubmit={handleInviteSubmit} className="space-y-4">
+                              <input 
+                                  type="email" 
+                                  required 
+                                  value={inviteEmail}
+                                  onChange={e => setInviteEmail(e.target.value)}
+                                  placeholder="partner@email.com"
+                                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
+                              />
+                              {inviteStatus === 'not-found' && <p className="text-rose-500 text-xs font-bold px-1">User not found. Send them the link instead!</p>}
+                              <button type="submit" disabled={inviteStatus === 'searching'} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
+                                  {inviteStatus === 'searching' ? <Loader2 size={18} className="animate-spin" /> : <><span>Send Invite</span> <Send size={16} /></>}
+                              </button>
+                          </form>
+                      </div>
+                  )}
+              </div>
+          </div>
       )}
 
       {/* Profile Modification Modal */}
