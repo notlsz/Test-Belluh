@@ -48,6 +48,7 @@ export interface Circle {
   type: CircleType;
   status: CircleStatus;
   members: string[]; // User IDs
+  memberProfiles?: { id: string; name: string; avatar: string }[]; // Rich profile data
   themeColor?: string;
   avatar?: string;
   startDate?: Date;
