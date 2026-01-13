@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -78,6 +78,10 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'searching' | 'sent' | 'not-found'>('idle');
   const [invitingCircleId, setInvitingCircleId] = useState<string | null>(null);
   
+  // Avatar Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
   // Receipt State
   const [receiptData, setReceiptData] = useState<RelationshipReceipt | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -121,6 +125,35 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   };
 
   const handleSaveProfile = () => { onUpdateUser({ name: editName, avatar: editAvatar }); setIsEditingProfile(false); };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setIsUploading(true);
+      try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
+
+          const { error } = await supabase.storage
+              .from('journal-media')
+              .upload(fileName, file, { upsert: true });
+
+          if (error) throw error;
+
+          const { data } = supabase.storage
+              .from('journal-media')
+              .getPublicUrl(fileName);
+
+          setEditAvatar(data.publicUrl);
+          onShowToast("Photo uploaded successfully", "success");
+      } catch (error) {
+          console.error("Upload failed:", error);
+          onShowToast("Failed to upload photo", "error");
+      } finally {
+          setIsUploading(false);
+      }
+  };
 
   const handleGenerateReceipt = async () => {
       setGeneratingReceipt(true);
@@ -225,75 +258,113 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               <button onClick={() => setActiveTab('me')} className={`flex-1 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === 'me' ? 'bg-slate-900 text-white' : 'text-slate-400'}`}>Me</button>
           </div>
       </div>
-      {activeTab === 'us' ? (
-          <div className="animate-fade-in space-y-12 px-6">
-              <div className="flex flex-col items-center justify-center pt-4">
-                  <div className="relative flex items-center justify-center -space-x-5">
-                      <div className="w-28 h-28 rounded-full border-[5px] border-white shadow-apple overflow-hidden bg-white"><img src={user.avatar} className="w-full h-full object-cover" /></div>
-                      <div className="w-12 h-12 bg-white rounded-full shadow-lg border border-slate-50 text-[#f0addd] flex items-center justify-center z-20"><Infinity size={22} strokeWidth={2.5} /></div>
-                      <div className="w-28 h-28 rounded-full border-[5px] border-white shadow-apple overflow-hidden bg-white"><img src={user.partnerAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.partnerName}`} className="w-full h-full object-cover" /></div>
-                  </div>
-                  <h2 className="text-4xl font-serif text-slate-900 mt-8 tracking-tight">{user.name.split(' ')[0]} <span className="text-[#f0addd] italic mx-2">&</span> {user.partnerName ? user.partnerName.split(' ')[0] : 'Partner'}</h2>
-                  <div className="mt-8 flex flex-wrap justify-center gap-3">
-                        <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Flame size={14} className="text-orange-500 fill-orange-500" /><span className="text-xs font-bold">{streak} Day Streak</span></div>
-                        <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Activity size={14} className="text-[#f0addd]" /><span className="text-xs font-bold">{synergyScore}% Synergy</span></div>
-                  </div>
-              </div>
-              <div className="text-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Current Resonance</p>
-                  <h3 className={`text-3xl font-serif ${pulseStatus.color}`}>{pulseStatus.text}</h3>
-              </div>
-              
-              {/* Artifact Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                  <div onClick={() => onViewArtifact('letter')} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col aspect-square justify-between cursor-pointer hover:shadow-md transition-shadow">
-                      <Mail size={24} className="text-[#f0addd]" />
-                      <div>
-                          <h4 className="font-serif text-lg text-slate-900 font-bold">Future Letter</h4>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Unlock 2030</p>
-                      </div>
-                  </div>
-                  <div onClick={() => onViewArtifact('reel')} className="bg-slate-900 p-6 rounded-[2rem] shadow-lg flex flex-col aspect-square justify-between cursor-pointer hover:scale-[1.02] transition-transform">
-                      <Film size={24} className="text-white" />
-                      <div>
-                          <h4 className="font-serif text-lg text-white font-bold">Chapter Reel</h4>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Highlights</p>
-                      </div>
-                  </div>
-                  <div onClick={handleGenerateReceipt} className="col-span-2 bg-[#f0addd] p-6 rounded-[2rem] shadow-lg flex items-center justify-between cursor-pointer hover:bg-[#e57ec3] transition-colors relative overflow-hidden group">
-                       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
-                       <div className="relative z-10 flex items-center gap-4">
-                           <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
-                               <Receipt size={24} />
-                           </div>
-                           <div className="text-white">
-                               <h4 className="font-serif text-xl font-bold">Print Receipt</h4>
-                               <p className="text-xs font-medium opacity-80">Generate your relationship invoice</p>
-                           </div>
-                       </div>
-                       <ArrowRight className="text-white" size={20} />
-                  </div>
-              </div>
 
-              {/* Accept/Decline Invitations UI */}
-              {pendingInvites.length > 0 && (
-                  <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pending Invites</h3>
-                      {pendingInvites.map(invite => (
-                          <div key={invite.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center justify-between animate-slide-up">
-                              <div className="flex items-center gap-3">
-                                  <img src={invite.inviter.avatar} className="w-10 h-10 rounded-full" alt={invite.inviter.name} />
-                                  <div>
-                                      <p className="text-sm font-bold text-slate-900">{invite.inviter.name}</p>
-                                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Wants to connect</p>
-                                  </div>
-                              </div>
-                              <div className="flex gap-2">
-                                  <button onClick={() => onAcceptInvite && onAcceptInvite(invite.id)} className="p-2 bg-slate-900 text-white rounded-full hover:bg-black transition-colors"><Check size={16}/></button>
-                                  <button onClick={() => onDeclineInvite && onDeclineInvite(invite.id)} className="p-2 bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-colors"><X size={16}/></button>
+      {/* Pending Invites - Improved Design */}
+      {pendingInvites && pendingInvites.length > 0 && (
+          <div className="px-6 mb-8 animate-slide-up">
+              <div className="bg-belluh-50 border border-belluh-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                      <Mail size={16} className="text-belluh-600" />
+                      <h3 className="text-xs font-bold text-belluh-800 uppercase tracking-widest">Pending Invite</h3>
+                  </div>
+                  {pendingInvites.map(invite => (
+                      <div key={invite.id} className="bg-white rounded-xl p-4 shadow-sm flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                              <img src={invite.inviter.avatar} alt="Inviter" className="w-10 h-10 rounded-full bg-slate-100 object-cover" />
+                              <div>
+                                  <p className="text-sm font-bold text-slate-900">{invite.inviter.name}</p>
+                                  <p className="text-xs text-slate-500">Wants to connect journals</p>
                               </div>
                           </div>
-                      ))}
+                          <div className="flex gap-2">
+                              <button 
+                                onClick={() => onDeclineInvite && onDeclineInvite(invite.id)}
+                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                              >
+                                  <X size={18} />
+                              </button>
+                              <button 
+                                onClick={() => onAcceptInvite && onAcceptInvite(invite.id)}
+                                className="p-2 bg-slate-900 text-white hover:bg-green-600 rounded-full transition-colors shadow-md"
+                              >
+                                  <Check size={18} />
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
+
+      {activeTab === 'us' ? (
+          <div className="animate-fade-in space-y-12">
+              
+              {activeCircle?.status === CircleStatus.Archived ? (
+                  <div className="px-6">
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
+                          <Archive size={20} className="text-amber-500" />
+                          <p className="text-sm text-amber-900">You are viewing an archived relationship. This space is read-only.</p>
+                      </div>
+                  </div>
+              ) : activeCircleId === 'constellation' ? (
+                  <div className="px-6">
+                      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 shadow-xl">
+                          <Star size={20} className="text-belluh-300 fill-belluh-300" />
+                          <div>
+                            <h3 className="text-sm font-bold text-white">The Constellation</h3>
+                            <p className="text-xs text-slate-400">Viewing your entire universe of moments across all chapters.</p>
+                          </div>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="px-6">
+                      <div className="flex flex-col items-center justify-center pt-4">
+                          <div className="relative flex items-center justify-center -space-x-5">
+                              <div className="w-28 h-28 rounded-full border-[5px] border-white shadow-apple overflow-hidden bg-white"><img src={user.avatar} className="w-full h-full object-cover" /></div>
+                              <div className="w-12 h-12 bg-white rounded-full shadow-lg border border-slate-50 text-[#f0addd] flex items-center justify-center z-20"><Infinity size={22} strokeWidth={2.5} /></div>
+                              <div className="w-28 h-28 rounded-full border-[5px] border-white shadow-apple overflow-hidden bg-white"><img src={user.partnerAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.partnerName}`} className="w-full h-full object-cover" /></div>
+                          </div>
+                          <h2 className="text-4xl font-serif text-slate-900 mt-8 tracking-tight">{user.name.split(' ')[0]} <span className="text-[#f0addd] italic mx-2">&</span> {user.partnerName ? user.partnerName.split(' ')[0] : 'Partner'}</h2>
+                          <div className="mt-8 flex flex-wrap justify-center gap-3">
+                                <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Flame size={14} className="text-orange-500 fill-orange-500" /><span className="text-xs font-bold">{streak} Day Streak</span></div>
+                                <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100 flex items-center gap-2"><Activity size={14} className="text-[#f0addd]" /><span className="text-xs font-bold">{synergyScore}% Synergy</span></div>
+                          </div>
+                      </div>
+                      <div className="text-center mt-12 mb-12">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Current Resonance</p>
+                          <h3 className={`text-3xl font-serif ${pulseStatus.color}`}>{pulseStatus.text}</h3>
+                      </div>
+                      
+                      {/* Artifact Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                          <div onClick={() => onViewArtifact('letter')} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col aspect-square justify-between cursor-pointer hover:shadow-md transition-shadow">
+                              <Mail size={24} className="text-[#f0addd]" />
+                              <div>
+                                  <h4 className="font-serif text-lg text-slate-900 font-bold">Future Letter</h4>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Unlock 2030</p>
+                              </div>
+                          </div>
+                          <div onClick={() => onViewArtifact('reel')} className="bg-slate-900 p-6 rounded-[2rem] shadow-lg flex flex-col aspect-square justify-between cursor-pointer hover:scale-[1.02] transition-transform">
+                              <Film size={24} className="text-white" />
+                              <div>
+                                  <h4 className="font-serif text-lg text-white font-bold">Chapter Reel</h4>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Highlights</p>
+                              </div>
+                          </div>
+                          <div onClick={handleGenerateReceipt} className="col-span-2 bg-[#f0addd] p-6 rounded-[2rem] shadow-lg flex items-center justify-between cursor-pointer hover:bg-[#e57ec3] transition-colors relative overflow-hidden group">
+                               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
+                               <div className="relative z-10 flex items-center gap-4">
+                                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                                       <Receipt size={24} />
+                                   </div>
+                                   <div className="text-white">
+                                       <h4 className="font-serif text-xl font-bold">Print Receipt</h4>
+                                       <p className="text-xs font-medium opacity-80">Generate your relationship invoice</p>
+                                   </div>
+                               </div>
+                               <ArrowRight className="text-white" size={20} />
+                          </div>
+                      </div>
                   </div>
               )}
           </div>
@@ -311,6 +382,23 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               </div>
               
               <div className="flex gap-4 overflow-x-auto pb-6 -mx-6 px-6 no-scrollbar">
+                  {/* Constellation Card */}
+                  <div 
+                    onClick={() => handleCircleSwitch('constellation')} 
+                    className={`w-[240px] h-[140px] rounded-[1.8rem] p-6 flex flex-col justify-between cursor-pointer transition-all duration-500 relative overflow-hidden group shrink-0 ${activeCircleId === 'constellation' ? 'bg-slate-900 shadow-xl scale-[1.05] z-10 translate-y-[-4px]' : 'bg-slate-900 border border-slate-800 opacity-90'}`}
+                  >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-belluh-500/20 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <div className="relative z-10">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all bg-white/10 text-white border border-white/10`}>
+                                <Star size={18} className="fill-white" />
+                            </div>
+                        </div>
+                        <div className="relative z-10 text-white">
+                            <h4 className="font-bold text-lg leading-tight mb-1 truncate">My Constellation</h4>
+                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">All Chapters</span>
+                        </div>
+                  </div>
+
                   {activeCircles.map(c => <CircleCard key={c.id} circle={c} isActive={activeCircleId === c.id} onClick={() => handleCircleSwitch(c.id)} user={user} onInvite={handleTriggerInvite} />)}
               </div>
 
@@ -564,13 +652,34 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                   <h3 className="font-serif text-2xl mb-8 text-slate-900">Edit Profile</h3>
                   <div className="space-y-6">
                       <div className="flex flex-col items-center">
-                          <div className="relative group cursor-pointer" onClick={() => setEditAvatar(`https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`)}>
-                              <img src={editAvatar} className="w-24 h-24 rounded-full border-4 border-slate-50 shadow-sm object-cover" alt="Profile" />
+                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                          
+                          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                              <img src={editAvatar} className={`w-24 h-24 rounded-full border-4 border-slate-50 shadow-sm object-cover transition-opacity ${isUploading ? 'opacity-50' : ''}`} alt="Profile" />
                               <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Camera size={20} className="text-white" />
+                                  <Upload size={20} className="text-white" />
                               </div>
+                              {isUploading && (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                      <Loader2 size={20} className="animate-spin text-slate-900" />
+                                  </div>
+                              )}
                           </div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Shuffle Avatar</span>
+                          
+                          <div className="flex items-center gap-4 mt-4">
+                              <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-full"
+                              >
+                                Upload Photo
+                              </button>
+                              <button 
+                                onClick={() => setEditAvatar(`https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`)}
+                                className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-full"
+                              >
+                                Shuffle Art
+                              </button>
+                          </div>
                       </div>
                       <div className="space-y-1.5">
                           <label className="text-xs font-bold text-slate-900 ml-1">Name</label>

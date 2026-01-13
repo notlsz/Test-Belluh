@@ -160,11 +160,12 @@ const App: React.FC = () => {
         }
 
         // 1. Fetch User Profile
+        // We use maybeSingle() to handle cases where profile doesn't exist yet (though Auth should create it)
         const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', sessionUser.id)
-            .single();
+            .maybeSingle();
 
         // 2. Fetch Active Partner Connections (Connected) - Support Multiple
         const { data: connections } = await supabase
@@ -233,7 +234,7 @@ const App: React.FC = () => {
 
         // 5. Build Circles
         const newCircles: any[] = [];
-        const myFirstName = profile?.full_name?.trim().split(' ')[0] || 'Me';
+        const myFirstName = profile?.full_name?.trim().split(' ')[0] || sessionUser.email?.split('@')[0] || 'Me';
         
         // Couple Circle (Default / Primary)
         if (partnerProfile) {
@@ -377,7 +378,12 @@ const App: React.FC = () => {
             hasCompletedOnboarding: !!displayPartnerName
         }));
         
-        if (!displayPartnerName && !partnerProfile) {
+        // Onboarding Check
+        // Logic: Only show onboarding if user was created recently (e.g. last 5 mins) AND has no partner data.
+        // This effectively filters out old users logging back in.
+        const isJustSignedUp = (new Date().getTime() - new Date(sessionUser.created_at).getTime()) < 5 * 60 * 1000;
+        
+        if (isJustSignedUp && !displayPartnerName && !partnerProfile) {
            setIsOnboarding(true);
         } else {
             setIsOnboarding(false);
@@ -551,45 +557,50 @@ const App: React.FC = () => {
           return;
       }
 
-      const updatePayload: any = {};
-      if (updates.name !== undefined) updatePayload.full_name = updates.name;
-      if (updates.avatar !== undefined) updatePayload.avatar_url = updates.avatar;
+      // Upsert payload to ensure profile creation if missing
+      const updatePayload: any = {
+          id: currentUser.id,
+          email: currentUser.email,
+          updated_at: new Date().toISOString()
+      };
+      
+      // Use new values if provided, otherwise preserve existing state
+      updatePayload.full_name = updates.name !== undefined ? updates.name : user.name;
+      updatePayload.avatar_url = updates.avatar !== undefined ? updates.avatar : user.avatar;
 
-      if (Object.keys(updatePayload).length > 0) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .update(updatePayload)
-            .eq('id', currentUser.id)
-            .select()
-            .single();
+      // Use Upsert instead of Update to fix PGRST116 (0 rows) error if profile is missing
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(updatePayload)
+        .select()
+        .single();
 
-          if (error) {
-              console.error(error);
-              showNotification('Failed to update profile', 'error');
-              return;
-          }
-          
-          trackEvent('profile_updated');
-
-          // Dynamic Circle Renaming Logic
-          const myNewName = (data.full_name || user.name).split(' ')[0];
-          const partnerName = user.partnerName ? user.partnerName.split(' ')[0] : 'Partner';
-          
-          const updatedCircles = user.circles.map(c => {
-              if (c.type === CircleType.Couple) {
-                  return { ...c, name: `${myNewName} & ${partnerName}` };
-              }
-              return c;
-          });
-
-          setUser(prev => ({ 
-              ...prev, 
-              name: data.full_name, 
-              avatar: data.avatar_url,
-              circles: updatedCircles
-          }));
-          showNotification('Profile updated successfully', 'success');
+      if (error) {
+          console.error("Profile update error:", error);
+          showNotification('Failed to update profile', 'error');
+          return;
       }
+      
+      trackEvent('profile_updated');
+
+      // Dynamic Circle Renaming Logic
+      const myNewName = (data.full_name || user.name).split(' ')[0];
+      const partnerName = user.partnerName ? user.partnerName.split(' ')[0] : 'Partner';
+      
+      const updatedCircles = user.circles.map(c => {
+          if (c.type === CircleType.Couple) {
+              return { ...c, name: `${myNewName} & ${partnerName}` };
+          }
+          return c;
+      });
+
+      setUser(prev => ({ 
+          ...prev, 
+          name: data.full_name, 
+          avatar: data.avatar_url,
+          circles: updatedCircles
+      }));
+      showNotification('Profile updated successfully', 'success');
   };
 
   // NEW: Create Circle Logic (Persisted via Journal Entry workaround)

@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Lock, ArrowRight, Heart, Mail, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Lock, ArrowRight, Heart, Mail, UserPlus, CheckCircle2, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface OnboardingProps {
   onComplete: (partnerName: string, firstEntry: string) => void;
 }
 
+const PLACEHOLDERS = [
+    "They made me coffee...",
+    "The way they laughed...",
+    "How they listened when I was stressed...",
+    "A quiet moment we shared...",
+    "The look they gave me...",
+    "How safe I feel with them...",
+    "Their patience with me today...",
+    "A text that made me smile..."
+];
+
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [step, setStep] = useState<number>(0);
   const [partnerName, setPartnerName] = useState('');
   const [entry, setEntry] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
   // Invite State
   const [inviteEmail, setInviteEmail] = useState('');
@@ -23,6 +35,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       return () => clearTimeout(timer);
     }
   }, [step]);
+
+  // Rotating Placeholders Logic
+  useEffect(() => {
+      if (step === 2 && !entry) {
+          const interval = setInterval(() => {
+              setPlaceholderIndex(i => (i + 1) % PLACEHOLDERS.length);
+          }, 3000);
+          return () => clearInterval(interval);
+      }
+  }, [step, entry]);
+
+  const handleShufflePrompt = (e: React.MouseEvent) => {
+      e.preventDefault();
+      setPlaceholderIndex(i => (i + 1) % PLACEHOLDERS.length);
+  };
 
   const handlePartnerNameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,14 +180,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
            <h2 className="text-3xl font-serif text-slate-900 mb-6 text-center leading-tight">
              Tell me one thing you love about {partnerName} today.
            </h2>
-           <textarea 
-             autoFocus
-             value={entry}
-             onChange={(e) => setEntry(e.target.value)}
-             placeholder="They made me coffee..."
-             rows={3}
-             className="w-full bg-slate-50 p-6 rounded-3xl text-xl font-serif placeholder:text-slate-300 focus:outline-none resize-none mb-8"
-           />
+           <div className="relative mb-8">
+               <textarea 
+                 autoFocus
+                 value={entry}
+                 onChange={(e) => setEntry(e.target.value)}
+                 placeholder={PLACEHOLDERS[placeholderIndex]}
+                 rows={3}
+                 className="w-full bg-slate-50 p-6 rounded-3xl text-xl font-serif placeholder:text-slate-300 focus:outline-none resize-none"
+               />
+               <button 
+                   type="button"
+                   onClick={handleShufflePrompt}
+                   className="absolute right-4 bottom-4 p-2 text-slate-400 hover:text-belluh-400 bg-white rounded-full shadow-sm hover:shadow-md transition-all active:scale-95"
+                   title="Shuffle Idea"
+               >
+                   <RefreshCw size={16} />
+               </button>
+           </div>
+           
            <button 
              type="submit" 
              disabled={!entry.trim() || isAnimating}
