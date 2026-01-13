@@ -157,9 +157,15 @@ const App: React.FC = () => {
       try {
         trackEvent('app_opened', { source: 'web' });
 
-        // --- HANDLE INVITE LINKS ---
+        // --- HANDLE INVITE LINKS (Persistent) ---
+        // Check URL params OR stored invite from before login
         const params = new URLSearchParams(window.location.search);
-        const inviteId = params.get('invite');
+        let inviteId = params.get('invite');
+        
+        if (!inviteId) {
+            // Check local storage if we saved it before redirect
+            inviteId = localStorage.getItem('pending_invite_id');
+        }
 
         if (inviteId && inviteId !== sessionUser.id) {
             // Check if connection already exists
@@ -178,17 +184,18 @@ const App: React.FC = () => {
                 showNotification("Invite received! Check your profile.", "success");
                 trackEvent('invite_received', { inviter_id: inviteId });
             }
+            // Clear stored invite
+            localStorage.removeItem('pending_invite_id');
         }
 
-        // Clean URL - Safely handle history replacement
+        // Clean URL - Safely handle history replacement with try-catch
         try {
-            const newUrl = new URL(window.location.href);
-            if (newUrl.searchParams.has('invite')) {
-                newUrl.searchParams.delete('invite');
-                window.history.replaceState({}, document.title, newUrl.toString());
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('invite')) {
+                url.searchParams.delete('invite');
+                window.history.replaceState({}, document.title, url.toString());
             }
         } catch (e) {
-            // Ignore history errors in restricted environments (e.g. blob URLs)
             console.debug("Could not clean URL query params:", e);
         }
 
@@ -229,11 +236,14 @@ const App: React.FC = () => {
         }
 
         // 3. Fetch Pending Incoming Invites
-        const { data: pendingRows } = await supabase
+        console.log('🟡 Fetching pending invites for:', sessionUser.id);
+        const { data: pendingRows, error: pendingError } = await supabase
             .from('partner_connections')
             .select('*')
             .eq('partner_id', sessionUser.id)
             .eq('status', 'pending');
+        
+        console.log('🟢 Pending rows found:', { count: pendingRows?.length, data: pendingRows, error: pendingError });
         
         if (pendingRows && pendingRows.length > 0) {
             const inviterIds = pendingRows.map((r: any) => r.user_id);
@@ -250,8 +260,10 @@ const App: React.FC = () => {
                     }
                 };
             });
+            console.log('📍 Setting pending invites:', invites);
             setPendingInvites(invites);
         } else {
+            console.log('📍 No pending invites, clearing');
             setPendingInvites([]);
         }
 
@@ -447,6 +459,13 @@ const App: React.FC = () => {
   // Initialize Supabase Auth & Data
   useEffect(() => {
     let mounted = true;
+
+    // Persist Invite Logic on Mount
+    const params = new URLSearchParams(window.location.search);
+    const inviteId = params.get('invite');
+    if (inviteId) {
+        localStorage.setItem('pending_invite_id', inviteId);
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -714,32 +733,53 @@ const App: React.FC = () => {
       }
   };
 
-  // Fixed Invite Handler - No hard reload
+  // Fixed Invite Handler - No hard reload, Optimistic UI with Robust Confirmation
   const handleAcceptInvite = async (connectionId: string) => {
+      console.log('🔵 ACCEPT INVITE:', connectionId);
+      // 1. Immediate Optimistic Update
+      setPendingInvites(prev => prev.filter(i => i.id !== connectionId));
+
       try {
-          const { error } = await supabase
+          // 2. Perform DB Update
+          console.log('🟡 Updating DB...');
+          const { data, error } = await supabase
               .from('partner_connections')
               .update({ status: 'connected' })
-              .eq('id', connectionId);
+              .eq('id', connectionId)
+              .select(); // Select forces return of updated row, confirming logic
+
+          console.log('🟢 DB Response:', { data, error });
 
           if (error) throw error;
 
           trackEvent('invite_accepted');
-          showNotification('Invite accepted!', 'success');
+          showNotification('Invite accepted! Linking journals...', 'success');
           
-          // Refresh user data to show new circle state without reloading the page
+          // 3. WAIT for DB propagation (Critical to prevent stale reads)
+          // This delay ensures the subsequent fetch finds the 'connected' status
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // 4. Reload User Data to Build Shared Circle
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+              console.log('🟡 Reloading user data...');
               await loadUserData(user);
+              console.log('✅ Reload complete');
           }
       } catch (error) {
-          console.error(error);
-          showNotification('Failed to accept invite', 'error');
+          console.error('🔴 ERROR:', error);
+          showNotification('Failed to accept invite. Please try again.', 'error');
+          // Reload to restore state if failed (puts the invite back)
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) loadUserData(user);
       }
   };
 
-  // Fixed Decline Handler - No hard reload
+  // Fixed Decline Handler - No hard reload, Optimistic UI
   const handleDeclineInvite = async (connectionId: string) => {
+      // Optimistic update
+      setPendingInvites(prev => prev.filter(i => i.id !== connectionId));
+
       try {
           const { error } = await supabase
               .from('partner_connections')
@@ -748,16 +788,13 @@ const App: React.FC = () => {
 
           if (error) throw error;
 
-          setPendingInvites(prev => prev.filter(i => i.id !== connectionId));
           showNotification('Invite declined', 'success');
-          
-          // Optional: Refresh user data just in case
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) loadUserData(user);
-
       } catch (error) {
           console.error(error);
           showNotification('Failed to decline invite', 'error');
+          // Reload to restore state if failed
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) loadUserData(user);
       }
   };
 

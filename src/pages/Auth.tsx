@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, Lock, Eye, EyeOff, Check } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -43,10 +42,17 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onShowLegal, onShowToast, initialV
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
+      // Preserve existing query parameters (like ?invite=123)
+      const redirectUrl = new URL(window.location.origin);
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.forEach((value, key) => {
+          redirectUrl.searchParams.append(key, value);
+      });
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: window.location.origin
+            redirectTo: redirectUrl.toString()
         }
       });
       if (error) throw error;
@@ -118,7 +124,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onShowLegal, onShowToast, initialV
   const RequirementItem = ({ met, text }: { met: boolean, text: string }) => (
       <div className={`flex items-center gap-2 text-xs transition-colors duration-300 ${met ? 'text-green-600' : 'text-slate-400'}`}>
           {met ? <Check size={12} strokeWidth={3} /> : <div className="w-3 h-3 rounded-full border border-slate-300"></div>}
-          <span className={met ? 'font-medium' : ''}>{text}</span>
+          <span className="font-medium">{text}</span>
       </div>
   );
 

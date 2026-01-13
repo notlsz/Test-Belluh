@@ -474,15 +474,23 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
               status: 'pending'
           });
 
-          if (error) console.error(error);
-          
-          setInviteStatus('sent');
-          onShowToast('Invite sent!', 'success');
-          setTimeout(() => {
-              setShowInviteModal(false);
+          if (error) {
+              console.error(error);
+              if (error.code === '23505') {
+                  onShowToast('Invite already pending or connected.', 'info');
+              } else {
+                  onShowToast('Failed to send invite: ' + error.message, 'error');
+              }
               setInviteStatus('idle');
-              setInviteEmail('');
-          }, 2000);
+          } else {
+              setInviteStatus('sent');
+              onShowToast('Invite sent!', 'success');
+              setTimeout(() => {
+                  setShowInviteModal(false);
+                  setInviteStatus('idle');
+                  setInviteEmail('');
+              }, 2000);
+          }
           
       } catch (err) {
           console.error(err);
