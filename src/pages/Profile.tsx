@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -67,14 +67,92 @@ const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onEd
     );
 };
 
+// --- NEW COMPONENT: Interactive Fact Card ---
+const FactCard = ({ label, date, setDate, isEditing, icon: Icon, theme }: any) => {
+    const themes: any = {
+        blue: "bg-blue-50 border-blue-100 text-blue-900 hover:shadow-blue-100/50",
+        rose: "bg-rose-50 border-rose-100 text-rose-900 hover:shadow-rose-100/50",
+        purple: "bg-purple-50 border-purple-100 text-purple-900 hover:shadow-purple-100/50",
+        amber: "bg-amber-50 border-amber-100 text-amber-900 hover:shadow-amber-100/50",
+        orange: "bg-orange-50 border-orange-100 text-orange-900 hover:shadow-orange-100/50",
+        slate: "bg-slate-900 border-slate-800 text-white hover:shadow-slate-200/50"
+    };
+    
+    const currentTheme = themes[theme] || themes.blue;
+
+    return (
+        <div className={`relative overflow-hidden rounded-[2rem] p-6 h-48 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl border ${currentTheme} group`}>
+            {/* Decorative Background */}
+            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl transition-all group-hover:scale-150"></div>
+            <Icon className="absolute -bottom-6 -right-6 w-32 h-32 opacity-[0.08] group-hover:opacity-[0.15] transition-all duration-500 rotate-12" />
+
+            <div className="relative z-10 flex justify-between items-start">
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 flex items-center gap-2">
+                    {label}
+                    {isEditing && <div className="w-1.5 h-1.5 bg-current rounded-full animate-pulse"></div>}
+                </span>
+            </div>
+
+            <div className="relative z-10">
+                {isEditing ? (
+                    <div className="bg-white/30 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-sm">
+                        <input 
+                            type="date" 
+                            value={date instanceof Date ? date.toISOString().split('T')[0] : ''}
+                            onChange={(e) => setDate(new Date(e.target.value))}
+                            className="w-full bg-transparent border-none text-lg font-bold outline-none text-inherit p-0 focus:ring-0 cursor-pointer font-serif"
+                        />
+                    </div>
+                ) : (
+                    <>
+                        <div className="text-3xl md:text-4xl font-serif font-medium tracking-tight leading-tight mb-1">
+                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-sm font-medium opacity-60">
+                            {date.getFullYear()}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- NEW COMPONENT: Calculated Stat Card ---
+const StatCard = ({ label, value, subtext, icon: Icon, theme }: any) => {
+    const themes: any = {
+        slate: "bg-slate-900 text-white shadow-xl shadow-slate-200/50",
+        white: "bg-white text-slate-900 border border-slate-100 shadow-sm"
+    };
+    const currentTheme = themes[theme] || themes.white;
+
+    return (
+        <div className={`relative overflow-hidden rounded-[2rem] p-6 h-48 flex flex-col justify-between transition-all duration-500 hover:scale-[1.02] hover:shadow-xl ${currentTheme} group`}>
+             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-bl-full pointer-events-none"></div>
+             <Icon className={`absolute -bottom-4 -right-4 w-24 h-24 transition-all duration-500 rotate-12 ${theme === 'slate' ? 'opacity-[0.05] text-white' : 'opacity-[0.05] text-slate-900'}`} />
+
+             <div className="relative z-10">
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'slate' ? 'text-slate-400' : 'text-slate-400'}`}>{label}</span>
+             </div>
+
+             <div className="relative z-10">
+                 <div className="text-4xl md:text-5xl font-serif font-medium tracking-tighter leading-none mb-2">
+                     {value}
+                 </div>
+                 <div className={`text-xs font-bold uppercase tracking-wider ${theme === 'slate' ? 'text-slate-400' : 'text-slate-400'}`}>
+                     {subtext}
+                 </div>
+             </div>
+        </div>
+    );
+};
+
 const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLogout, onCircleChange, onCreateCircle, onArchiveCircle, onRenameCircle, onUpdateUser, onShowLegal, onViewArtifact, onShowToast, pendingInvites = [], onAcceptInvite, onDeclineInvite, onTriggerPremium }) => {
   const [activeTab, setActiveTab] = useState<'us' | 'me'>('us');
   const [activeCircleId, setActiveCircleId] = useState(user.activeCircleId);
   const [notes, setNotes] = useState<LoveNote[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [newNoteContent, setNewNoteContent] = useState('');
-  const [isAddingNote, setIsAddingNote] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(user.name);
   const [editAvatar, setEditAvatar] = useState(user.avatar);
@@ -88,6 +166,16 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   // Circle Editing State
   const [editingCircle, setEditingCircle] = useState<Circle | null>(null);
   const [editCircleName, setEditCircleName] = useState('');
+
+  // Editable Facts State
+  const [facts, setFacts] = useState({
+    firstMet: new Date(),
+    firstKiss: new Date(),
+    firstDate: new Date(),
+    partnerBday: new Date(),
+    anniversary: new Date()
+  });
+  const [isEditingFacts, setIsEditingFacts] = useState(false);
 
   // Avatar Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,30 +207,20 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const totalMemoriesUs = entries.length;
   const totalMemoriesMe = entries.filter(e => e.userId === user.id).length;
 
-  const relationshipFacts = useMemo(() => {
-      if (!activeCircle || !activeCircle.startDate) return null;
-      
-      const start = new Date(activeCircle.startDate);
-      const now = new Date();
-      const daysTogether = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      
-      const nextAnniversary = new Date(start);
-      nextAnniversary.setFullYear(now.getFullYear());
-      if (nextAnniversary < now) nextAnniversary.setFullYear(now.getFullYear() + 1);
-      const daysUntilAnniversary = Math.ceil((nextAnniversary.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-      // Mocking/Using Start Date for other facts since we don't store them yet
-      return {
-          firstMet: start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-          firstKiss: new Date(start.getTime() + 86400000 * 3).toLocaleDateString(), // Mock: 3 days after
-          firstDate: start.toLocaleDateString(),
-          daysTogether,
-          daysUntilAnniversary,
-          daysUntilBirthday: 42 // Mock
-      };
-  }, [activeCircle]);
-
   const pulseStatus = synergyScore >= 80 ? { text: "Deeply Connected", color: "text-[#f0addd]" } : { text: "Steady Growth", color: "text-slate-600" };
+
+  // Sync facts when circle changes
+  useEffect(() => {
+    if (activeCircle?.startDate) {
+        const start = new Date(activeCircle.startDate);
+        setFacts(prev => ({
+            ...prev,
+            firstMet: start,
+            // If anniversary isn't set, default to start date
+            anniversary: start
+        }));
+    }
+  }, [activeCircle?.id]);
 
   useEffect(() => {
     if (!user.id) return;
@@ -165,7 +243,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const handleTriggerInvite = (circleId: string) => {
     setInvitingCircleId(circleId);
     setShowInviteModal(true);
-    setEditingCircle(null); // Close edit modal if coming from there
+    setEditingCircle(null);
   };
 
   const handleCreateCircle = () => {
@@ -311,6 +389,11 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
       }
   };
 
+  const saveFacts = () => {
+    setIsEditingFacts(false);
+    onShowToast("Relationship facts updated", "success");
+  };
+
   const currentColor = RECEIPT_COLORS[receiptColorIdx];
 
   return (
@@ -403,35 +486,93 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                           <h3 className={`text-3xl font-serif ${pulseStatus.color}`}>{pulseStatus.text}</h3>
                       </div>
 
-                      {/* Relationship Facts Grid */}
-                      {relationshipFacts && (
-                          <div className="mb-12">
-                              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Relationship Facts</h3>
-                              <div className="grid grid-cols-2 gap-3">
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Calendar size={12}/> First Met</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstMet}</p>
-                                  </div>
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Heart size={12}/> First Kiss</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstKiss}</p>
-                                  </div>
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Clock size={12}/> Days Together</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysTogether} Days</p>
-                                  </div>
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Infinity size={12}/> Anniversary</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysUntilAnniversary} Days Away</p>
-                                  </div>
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Calendar size={12}/> First Date</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.firstDate}</p>
-                                  </div>
-                                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center gap-1">
-                                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1"><Gift size={12}/> Partner B-Day</div>
-                                      <p className="font-serif font-bold text-slate-800">{relationshipFacts.daysUntilBirthday} Days Away</p>
-                                  </div>
+                      {/* Relationship Facts Grid - Redesigned 9.5+ Version */}
+                      {activeCircle && (
+                          <div className="mb-12 relative group/facts">
+                              <div className="flex items-center justify-between mb-6">
+                                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Relationship Facts</h3>
+                                  <button 
+                                      onClick={() => isEditingFacts ? saveFacts() : setIsEditingFacts(true)}
+                                      className={`text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all flex items-center gap-2 ${isEditingFacts ? 'bg-slate-900 text-white shadow-lg scale-105' : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+                                  >
+                                      {isEditingFacts ? <><Check size={14} /> Done</> : <><Edit3 size={14} /> Customize</>}
+                                  </button>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                  {/* Days Together - High Contrast Stat */}
+                                  <StatCard 
+                                      label="Time Together"
+                                      value={`${Math.floor((new Date().getTime() - facts.firstMet.getTime()) / (1000 * 60 * 60 * 24))}d`}
+                                      subtext="And counting"
+                                      icon={Clock}
+                                      theme="slate"
+                                  />
+
+                                  {/* Anniversary Countdown - High Contrast Stat */}
+                                  <StatCard 
+                                      label="Next Anniversary"
+                                      value={(() => {
+                                          const now = new Date();
+                                          const next = new Date(facts.anniversary);
+                                          next.setFullYear(now.getFullYear());
+                                          if (next < now) next.setFullYear(now.getFullYear() + 1);
+                                          return `${Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))}`;
+                                      })()}
+                                      subtext="Days Away"
+                                      icon={Infinity}
+                                      theme="white"
+                                  />
+
+                                  {/* First Met */}
+                                  <FactCard 
+                                      label="First Met"
+                                      date={facts.firstMet}
+                                      setDate={(d: Date) => setFacts({...facts, firstMet: d})}
+                                      isEditing={isEditingFacts}
+                                      icon={Users}
+                                      theme="blue"
+                                  />
+
+                                  {/* First Kiss */}
+                                  <FactCard 
+                                      label="First Kiss"
+                                      date={facts.firstKiss}
+                                      setDate={(d: Date) => setFacts({...facts, firstKiss: d})}
+                                      isEditing={isEditingFacts}
+                                      icon={Heart}
+                                      theme="rose"
+                                  />
+
+                                  {/* First Date */}
+                                  <FactCard 
+                                      label="First Date"
+                                      date={facts.firstDate}
+                                      setDate={(d: Date) => setFacts({...facts, firstDate: d})}
+                                      isEditing={isEditingFacts}
+                                      icon={Calendar}
+                                      theme="purple"
+                                  />
+
+                                  {/* Anniversary (Editable) */}
+                                  <FactCard 
+                                      label="Anniversary"
+                                      date={facts.anniversary}
+                                      setDate={(d: Date) => setFacts({...facts, anniversary: d})}
+                                      isEditing={isEditingFacts}
+                                      icon={Sparkles}
+                                      theme="amber"
+                                  />
+
+                                  {/* Partner Birthday */}
+                                  <FactCard 
+                                      label="Partner B-Day"
+                                      date={facts.partnerBday}
+                                      setDate={(d: Date) => setFacts({...facts, partnerBday: d})}
+                                      isEditing={isEditingFacts}
+                                      icon={Gift}
+                                      theme="orange"
+                                  />
                               </div>
                           </div>
                       )}
