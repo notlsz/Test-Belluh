@@ -290,11 +290,13 @@ const App: React.FC = () => {
                     }
                 });
 
+                const isArchived = e.tags && e.tags.includes('status:archived');
+
                 newCircles.push({
                     id: e.id,
                     name: e.title || 'Untitled Circle',
                     type: CircleType.Custom,
-                    status: CircleStatus.Active,
+                    status: isArchived ? CircleStatus.Archived : CircleStatus.Active,
                     members: memberIds,
                     themeColor: e.content || '#cbd5e1', 
                     startDate: new Date(e.created_at)
@@ -645,6 +647,48 @@ const App: React.FC = () => {
       }
   };
 
+  // NEW: Archive Circle Logic
+  const handleArchiveCircle = async (circleId: string) => {
+      if (circleId === 'c1') return; // Cannot archive main couple circle via this method
+
+      const { data: entry } = await supabase.from('journal_entries').select('tags').eq('id', circleId).single();
+      if (!entry) return;
+
+      let newTags = entry.tags || [];
+      const isArchiving = !newTags.includes('status:archived');
+
+      if (isArchiving) {
+          newTags.push('status:archived');
+      } else {
+          newTags = newTags.filter((t: string) => t !== 'status:archived');
+      }
+
+      const { error } = await supabase.from('journal_entries').update({ tags: newTags }).eq('id', circleId);
+      
+      if (!error) {
+          setUser(prev => ({
+              ...prev,
+              circles: prev.circles.map(c => c.id === circleId ? { ...c, status: isArchiving ? CircleStatus.Archived : CircleStatus.Active } : c)
+          }));
+          showNotification(isArchiving ? 'Circle archived' : 'Circle restored', 'success');
+      }
+  };
+
+  // NEW: Rename Circle Logic
+  const handleRenameCircle = async (circleId: string, newName: string) => {
+      if (circleId === 'c1') return; // Cannot rename main couple circle via this method
+
+      const { error } = await supabase.from('journal_entries').update({ title: newName }).eq('id', circleId);
+      
+      if (!error) {
+          setUser(prev => ({
+              ...prev,
+              circles: prev.circles.map(c => c.id === circleId ? { ...c, name: newName } : c)
+          }));
+          showNotification('Circle renamed', 'success');
+      }
+  };
+
   const handleAcceptInvite = async (connectionId: string) => {
       const { error } = await supabase
           .from('partner_connections')
@@ -895,6 +939,8 @@ const App: React.FC = () => {
             streak={streak}   // Pass streak for synchronization
             onCircleChange={handleCircleChange} 
             onCreateCircle={handleCreateCircle} // Pass create function
+            onArchiveCircle={handleArchiveCircle}
+            onRenameCircle={handleRenameCircle}
             onLogout={handleLogout}
             onUpdateUser={handleUpdateUser}
             onShowLegal={(type) => setLegalModalOpen(type)}

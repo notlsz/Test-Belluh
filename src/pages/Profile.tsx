@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt } from '../types';
-import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift } from 'lucide-react';
+import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { generateRelationshipReceipt } from '../services/geminiService';
 
@@ -11,6 +11,8 @@ interface ProfileProps {
   onLogout?: () => void;
   onCircleChange: (circleId: string) => void;
   onCreateCircle?: (name: string) => void; 
+  onArchiveCircle?: (circleId: string) => void;
+  onRenameCircle?: (circleId: string, newName: string) => void;
   onTriggerPremium?: () => void;
   onUpdateUser: (updates: Partial<User>) => void;
   onShowLegal: (type: 'tos' | 'privacy') => void;
@@ -36,10 +38,10 @@ interface CircleCardProps {
   isActive: boolean;
   onClick: () => void;
   user: User;
-  onInvite: (circleId: string) => void;
+  onEdit: (circle: Circle) => void;
 }
 
-const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onInvite }) => {
+const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onEdit }) => {
     const dotColor = circle.status === CircleStatus.Archived ? 'bg-yellow-400' : 'bg-[#f0addd]'; 
     return (
         <div onClick={onClick} className={`w-[240px] h-[140px] rounded-[1.8rem] p-6 flex flex-col justify-between cursor-pointer transition-all duration-500 relative overflow-hidden group shrink-0 snap-start ${isActive ? 'bg-white shadow-apple scale-[1.05] z-10 translate-y-[-4px]' : 'bg-white border border-slate-100 opacity-80'}`}>
@@ -53,14 +55,19 @@ const CircleCard: React.FC<CircleCardProps> = ({ circle, isActive, onClick, onIn
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{(circle.type as any)}</span>
                 </div>
             </div>
-            {isActive && circle.status === CircleStatus.Active && (
-                <button onClick={(e) => { e.stopPropagation(); onInvite(circle.id); }} className="absolute top-4 right-4 bg-belluh-50 text-belluh-600 p-2 rounded-full hover:bg-belluh-100 transition-colors"><Plus size={14} /></button>
+            {isActive && (
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(circle); }} 
+                    className="absolute top-4 right-4 bg-slate-50 text-slate-400 p-2 rounded-full hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                >
+                    <MoreHorizontal size={14} />
+                </button>
             )}
         </div>
     );
 };
 
-const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLogout, onCircleChange, onCreateCircle, onUpdateUser, onShowLegal, onViewArtifact, onShowToast, pendingInvites = [], onAcceptInvite, onDeclineInvite, onTriggerPremium }) => {
+const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLogout, onCircleChange, onCreateCircle, onArchiveCircle, onRenameCircle, onUpdateUser, onShowLegal, onViewArtifact, onShowToast, pendingInvites = [], onAcceptInvite, onDeclineInvite, onTriggerPremium }) => {
   const [activeTab, setActiveTab] = useState<'us' | 'me'>('us');
   const [activeCircleId, setActiveCircleId] = useState(user.activeCircleId);
   const [notes, setNotes] = useState<LoveNote[]>([]);
@@ -78,6 +85,10 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'searching' | 'sent' | 'not-found'>('idle');
   const [invitingCircleId, setInvitingCircleId] = useState<string | null>(null);
   
+  // Circle Editing State
+  const [editingCircle, setEditingCircle] = useState<Circle | null>(null);
+  const [editCircleName, setEditCircleName] = useState('');
+
   // Avatar Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -146,9 +157,15 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
 
   const handleCircleSwitch = (id: string) => { setActiveCircleId(id); onCircleChange(id); };
 
+  const handleEditCircleOpen = (circle: Circle) => {
+      setEditingCircle(circle);
+      setEditCircleName(circle.name);
+  };
+
   const handleTriggerInvite = (circleId: string) => {
     setInvitingCircleId(circleId);
     setShowInviteModal(true);
+    setEditingCircle(null); // Close edit modal if coming from there
   };
 
   const handleCreateCircle = () => {
@@ -156,6 +173,20 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
           onCreateCircle(newCircleName);
           setIsCreatingCircle(false);
           setNewCircleName('');
+      }
+  };
+
+  const handleRenameSubmit = () => {
+      if (editingCircle && editCircleName.trim() && onRenameCircle) {
+          onRenameCircle(editingCircle.id, editCircleName);
+          setEditingCircle(null);
+      }
+  };
+
+  const handleArchiveSubmit = () => {
+      if (editingCircle && onArchiveCircle) {
+          onArchiveCircle(editingCircle.id);
+          setEditingCircle(null);
       }
   };
 
@@ -492,7 +523,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                 isActive={activeCircleId === circle.id} 
                                 onClick={() => handleCircleSwitch(circle.id)} 
                                 user={user}
-                                onInvite={handleTriggerInvite}
+                                onEdit={handleEditCircleOpen}
                            />
                        ))}
                    </div>
@@ -508,7 +539,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                                             isActive={activeCircleId === circle.id} 
                                             onClick={() => handleCircleSwitch(circle.id)} 
                                             user={user}
-                                            onInvite={handleTriggerInvite}
+                                            onEdit={handleEditCircleOpen}
                                         />
                                     </div>
                                 ))}
@@ -545,6 +576,68 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                            </div>
                       </button>
                    </div>
+              </div>
+          </div>
+      )}
+
+      {/* Edit Circle Modal */}
+      {editingCircle && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setEditingCircle(null)}>
+              <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm animate-scale-in" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-serif text-xl text-slate-900">Manage Circle</h3>
+                      <button onClick={() => setEditingCircle(null)}><X size={20} className="text-slate-400"/></button>
+                  </div>
+                  
+                  <div className="space-y-6">
+                      {/* Rename */}
+                      <div>
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Name</label>
+                          <div className="flex gap-2">
+                              <input 
+                                  type="text" 
+                                  value={editCircleName}
+                                  onChange={(e) => setEditCircleName(e.target.value)}
+                                  className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-belluh-200"
+                                  disabled={editingCircle.id === 'c1'} // Disable renaming main circle if hard to persist
+                              />
+                              <button 
+                                onClick={handleRenameSubmit}
+                                disabled={!editCircleName.trim() || editCircleName === editingCircle.name || editingCircle.id === 'c1'}
+                                className="bg-slate-900 text-white p-3 rounded-xl disabled:opacity-50 hover:bg-black transition-colors"
+                              >
+                                  <Check size={18} />
+                              </button>
+                          </div>
+                          {editingCircle.id === 'c1' && <p className="text-[10px] text-slate-400 mt-1 pl-1">Primary relationship name updates with profile names.</p>}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="space-y-3">
+                          {editingCircle.status === CircleStatus.Active && (
+                              <button 
+                                onClick={() => handleTriggerInvite(editingCircle.id)}
+                                className="w-full bg-belluh-50 text-belluh-600 border border-belluh-200 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-belluh-100 transition-all text-sm"
+                              >
+                                  <UserPlus size={16} />
+                                  <span>Invite Partner</span>
+                              </button>
+                          )}
+                          
+                          <button 
+                            onClick={handleArchiveSubmit}
+                            disabled={editingCircle.id === 'c1'}
+                            className={`w-full py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all text-sm border ${
+                                editingCircle.status === CircleStatus.Archived 
+                                ? 'bg-slate-900 text-white hover:bg-black border-transparent' 
+                                : 'bg-white text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                              {editingCircle.status === CircleStatus.Archived ? <RefreshCw size={16} /> : <Archive size={16} />}
+                              <span>{editingCircle.status === CircleStatus.Archived ? 'Restore Circle' : 'Archive Circle'}</span>
+                          </button>
+                      </div>
+                  </div>
               </div>
           </div>
       )}
@@ -834,6 +927,16 @@ const Loader2 = ({ size, className }: { size: number, className?: string }) => (
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
         </svg>
     </div>
+);
+
+// Helper for Restore Icon
+const RefreshCw = ({ size, className }: { size: number, className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+        <path d="M21 3v5h-5" />
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+        <path d="M8 16H3v5" />
+    </svg>
 );
 
 export default Profile;
