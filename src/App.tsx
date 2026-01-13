@@ -47,6 +47,27 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
   );
 };
 
+// Generate signed URLs for secure media access
+const getSignedStorageUrl = async (bucketName: string, filePath: string, expirySeconds = 3600) => {
+  if (!filePath) return null;
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, expirySeconds);
+    
+    if (error) {
+      console.error(`Error creating signed URL for ${bucketName}/${filePath}:`, error);
+      return null;
+    }
+    
+    return data?.signedUrl;
+  } catch (err) {
+    console.error('Failed to get signed URL:', err);
+    return null;
+  }
+};
+
 // Types for Invite Handling
 type PendingInvite = {
   id: string; // Connection ID
@@ -137,27 +158,21 @@ const App: React.FC = () => {
         trackEvent('app_opened', { source: 'web' });
 
         // --- HANDLE INVITE LINKS ---
-        // Check for ?invite=USER_ID in URL
         const params = new URLSearchParams(window.location.search);
         const inviteId = params.get('invite');
+
         if (inviteId && inviteId !== sessionUser.id) {
-            // Check if connection already exists
-            const { data: existing } = await supabase.from('partner_connections').select('*')
+            // Just check if an existing connection exists (read-only)
+            const { data: existing } = await supabase
+                .from('partner_connections')
+                .select('*')
                 .or(`and(user_id.eq.${inviteId},partner_id.eq.${sessionUser.id}),and(user_id.eq.${sessionUser.id},partner_id.eq.${inviteId})`);
             
-            if (!existing || existing.length === 0) {
-                // Insert new pending invite (inviteId invited sessionUser)
-                await supabase.from('partner_connections').insert({
-                    user_id: inviteId,
-                    partner_id: sessionUser.id,
-                    status: 'pending'
-                });
-                showNotification("Invite received! Check your profile.", "success");
-                trackEvent('invite_received', { inviter_id: inviteId });
-            }
-            // Clean URL
-            window.history.replaceState({}, document.title, "/");
+            // Invites are now created server-side or by the inviter, not via URL
+            // RLS policy blocks client-side inserts
         }
+
+        window.history.replaceState({}, document.title, "/");
 
         // 1. Fetch User Profile
         // We use maybeSingle() to handle cases where profile doesn't exist yet (though Auth should create it)
@@ -722,6 +737,27 @@ const App: React.FC = () => {
     const currentUser = (await supabase.auth.getUser()).data.user;
     if (!currentUser) return;
 
+    // Generate signed URLs before storing
+    let signedAudioUrl = audioUrl;
+    let signedPhotoUrl = mediaUrl;
+
+    if (audioUrl && !audioUrl.includes('?token=')) {
+        // Extract filename from public URL (last part of path)
+        const fileName = audioUrl.split('/').pop();
+        if (fileName) {
+            // NOTE: Using 'journal-media' because that is where Journal.tsx uploads files
+            signedAudioUrl = await getSignedStorageUrl('journal-media', fileName, 3600);
+        }
+    }
+
+    if (mediaUrl && !mediaUrl.includes('?token=') && !mediaUrl.startsWith('data:')) {
+        const fileName = mediaUrl.split('/').pop();
+        if (fileName) {
+            // NOTE: Using 'journal-media' because that is where Journal.tsx uploads files
+            signedPhotoUrl = await getSignedStorageUrl('journal-media', fileName, 3600);
+        }
+    }
+
     const newEntryPayload = {
         user_id: currentUser.id,
         content,
@@ -729,8 +765,8 @@ const App: React.FC = () => {
         mood,
         title: prompt,
         is_shared: !isPrivate,
-        audio_url: audioUrl,
-        photo_url: mediaUrl,
+        audio_url: signedAudioUrl, // Store signed URL
+        photo_url: signedPhotoUrl, // Store signed URL
         date: new Date().toISOString(),
         tags: [`circle:${user.activeCircleId}`] 
     };
@@ -753,8 +789,8 @@ const App: React.FC = () => {
             circleId: user.activeCircleId, 
             likes: 0,
             isLiked: false,
-            audioUrl: audioUrl,
-            mediaUrl: mediaUrl
+            audioUrl: signedAudioUrl || undefined,
+            mediaUrl: signedPhotoUrl || undefined
         };
         setEntries(prev => [newEntry, ...prev]);
         setIsComposeOpen(false); 
