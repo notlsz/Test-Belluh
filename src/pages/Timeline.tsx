@@ -181,22 +181,33 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
 
                         {/* Body Content */}
                         <div className="p-6 md:p-8 bg-white flex-1">
+                            {/* EVIDENCE SECTION - UPDATED */}
                             <div className="mb-8">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">The Evidence</h4>
-                                <div className="space-y-4">
-                                    {selectedPattern.relatedEntryIds?.slice(0, 2).map(id => {
-                                        const entry = entries.find(e => e.id === id);
-                                        if (!entry) return null;
-                                        return (
-                                            <div key={id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex gap-3 items-start">
-                                                <Quote size={14} className="text-slate-300 shrink-0 mt-1" />
-                                                <div>
-                                                    <p className="text-sm font-serif text-slate-600 italic mb-2">"{entry.content.substring(0, 80)}..."</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{entry.timestamp.toLocaleDateString()}</p>
+                                <h4 className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-widest mb-4 ml-1">The Evidence</h4>
+                                <div className="space-y-3">
+                                    {selectedPattern.relatedEntryIds && selectedPattern.relatedEntryIds.length > 0 ? (
+                                        selectedPattern.relatedEntryIds.slice(0, 2).map(id => {
+                                            const entry = entries.find(e => e.id === id);
+                                            if (!entry) return null;
+                                            return (
+                                                <div key={id} className="group p-5 rounded-[1.25rem] bg-[#f8fafc] border border-slate-100 flex gap-4 items-start hover:bg-[#f1f5f9] hover:border-slate-200 transition-all duration-300">
+                                                    <div className="shrink-0 mt-0.5">
+                                                        <Quote size={20} className="text-slate-300 fill-slate-300" strokeWidth={0} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[15px] font-serif text-slate-600 italic leading-relaxed mb-2.5">
+                                                            "{entry.content.substring(0, 100)}{entry.content.length > 100 ? '...' : ''}"
+                                                        </p>
+                                                        <p className="text-[11px] font-bold text-[#94a3b8] group-hover:text-[#64748B] transition-colors uppercase tracking-wide">
+                                                            {entry.timestamp.toLocaleDateString()}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )
-                                    })}
+                                            )
+                                        })
+                                    ) : (
+                                        <p className="text-sm text-slate-400 italic ml-1">Pattern detected from aggregate behavioral data.</p>
+                                    )}
                                 </div>
                             </div>
 
