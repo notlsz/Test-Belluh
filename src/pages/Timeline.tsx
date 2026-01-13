@@ -224,19 +224,57 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
        <div className="sticky top-0 z-40 bg-[#fcfcfc]/90 backdrop-blur-xl border-b border-transparent">
           <div className="px-6 pt-6 pb-2 max-w-3xl mx-auto">
              <div className="flex items-center justify-between mb-8">
-                <button 
-                    onClick={() => setIsCircleMenuOpen(!isCircleMenuOpen)} 
-                    className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-slate-50 transition-colors"
-                >
-                    {isArchived && <Archive size={14} className="text-slate-400"/>}
-                    {isConstellation ? (
-                         <Star size={14} className="text-slate-900 fill-slate-900"/>
-                    ) : null}
-                    <h1 className="text-sm font-semibold text-slate-900 tracking-tight group-hover:text-slate-700">
-                        {isConstellation ? "My Constellation" : activeCircle?.name}
-                    </h1>
-                    <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCircleMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
+                <div className="relative">
+                    <button 
+                        onClick={() => setIsCircleMenuOpen(!isCircleMenuOpen)}
+                        className="flex items-center gap-2 group p-2 -ml-2 rounded-xl hover:bg-slate-50 transition-colors"
+                    >
+                        {isArchived && <Archive size={14} className="text-slate-400"/>}
+                        {isConstellation ? (
+                                <Star size={14} className="text-slate-900 fill-slate-900"/>
+                        ) : null}
+                        <h1 className="text-sm font-semibold text-slate-900 tracking-tight group-hover:text-slate-700">
+                            {isConstellation ? "My Constellation" : activeCircle?.name}
+                        </h1>
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCircleMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isCircleMenuOpen && (
+                        <div className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 w-64 animate-pop z-50 origin-top-left ring-1 ring-black/5 max-h-80 overflow-y-auto">
+                            <div className="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-widest">Active Circles</div>
+                            {circles.filter(c => c.status === CircleStatus.Active).map(c => (
+                                <button key={c.id} className="w-full p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 text-left group" onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); }}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${activeCircleId === c.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-white border border-slate-200'}`}>
+                                        {c.name[0]}
+                                    </div>
+                                    <span className={`font-medium text-sm ${activeCircleId === c.id ? 'text-slate-900' : 'text-slate-600'}`}>{c.name}</span>
+                                    {activeCircleId === c.id && <div className="ml-auto w-1.5 h-1.5 bg-belluh-300 rounded-full"></div>}
+                                </button>
+                            ))}
+                            {circles.some(c => c.status === CircleStatus.Archived) && (
+                                <>
+                                    <div className="text-[10px] font-bold text-slate-400 px-3 py-2 mt-2 uppercase tracking-widest border-t border-slate-50">Past Chapters</div>
+                                    {circles.filter(c => c.status === CircleStatus.Archived).map(c => (
+                                        <button key={c.id} className="w-full p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 text-left group grayscale opacity-80" onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); }}>
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                                {c.name[0]}
+                                            </div>
+                                            <span className="font-medium text-sm text-slate-500">{c.name}</span>
+                                        </button>
+                                    ))}
+                                </>
+                            )}
+                            {/* Constellation Option */}
+                            <div className="text-[10px] font-bold text-slate-400 px-3 py-2 mt-2 uppercase tracking-widest border-t border-slate-50">Universal</div>
+                            <button className="w-full p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors flex items-center gap-3 text-left group" onClick={() => { onCircleChange('constellation'); setIsCircleMenuOpen(false); }}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${isConstellation ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-white border border-slate-200'}`}>
+                                    <Star size={14} className={isConstellation ? "fill-current" : ""} />
+                                </div>
+                                <span className={`font-medium text-sm ${isConstellation ? 'text-slate-900' : 'text-slate-600'}`}>My Constellation</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {!isConstellation && (
                     <div className="flex items-center gap-2">
@@ -244,16 +282,6 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                     </div>
                 )}
              </div>
-
-             {/* Dropdown for Circle Selection */}
-             {isCircleMenuOpen && (
-                 <div className="absolute top-20 left-6 bg-white border border-slate-100 shadow-xl rounded-2xl p-2 z-50 animate-pop">
-                     <button onClick={() => { onCircleChange('constellation'); setIsCircleMenuOpen(false); trackEvent('circle_switched', { circle: 'constellation' }); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${isConstellation ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>My Constellation</button>
-                     {circles.map(c => (
-                         <button key={c.id} onClick={() => { onCircleChange(c.id); setIsCircleMenuOpen(false); trackEvent('circle_switched', { circle: c.type }); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium ${activeCircleId === c.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-600'}`}>{c.name}</button>
-                     ))}
-                 </div>
-             )}
 
              {/* Thiel Upgrade: Predictive Forecast UI */}
              {forecast && !isConstellation && !isArchived && (
