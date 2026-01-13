@@ -138,11 +138,18 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
     // Require at least some context
     if (entries.length === 0) return [];
 
-    const context = entries.slice(0, 15).map(e => e.content).join('\n');
+    // Pass IDs in context so AI can reference them in relatedEntryIds
+    // Increased context window to 50 entries to catch older patterns
+    const context = entries.slice(0, 50).map(e => `ID: ${e.id} | Date: ${e.timestamp.toDateString()} | Content: ${e.content}`).join('\n');
+    
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Identify patterns in these entries. Return as JSON array of objects with id, title, content, and type. \n\nEntries:\n${context}`,
+        contents: `Identify patterns in these entries. Return as JSON array of objects. 
+        For 'relatedEntryIds', you MUST pick 1-3 specific 'ID's from the provided list that are the strongest evidence for that pattern.
+        
+        Entries:
+        ${context}`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -157,8 +164,12 @@ export const detectPatterns = async (entries: JournalEntry[]): Promise<Insight[]
                   type: Type.STRING,
                   enum: ['Weekly', 'Pattern', 'Suggestion', 'Growth', 'Pulse', 'Archetype', 'Spiral', 'Nostalgia']
                 },
+                relatedEntryIds: { 
+                    type: Type.ARRAY, 
+                    items: { type: Type.STRING } 
+                }
               },
-              required: ['id', 'title', 'content', 'type']
+              required: ['id', 'title', 'content', 'type', 'relatedEntryIds']
             }
           }
         }

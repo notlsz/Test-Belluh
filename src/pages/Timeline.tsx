@@ -181,7 +181,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
 
                         {/* Body Content */}
                         <div className="p-6 md:p-8 bg-white flex-1">
-                            {/* EVIDENCE SECTION - UPDATED */}
+                            {/* EVIDENCE SECTION */}
                             <div className="mb-8">
                                 <h4 className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-widest mb-4 ml-1">The Evidence</h4>
                                 <div className="space-y-3">
