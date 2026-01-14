@@ -132,8 +132,8 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
   };
 
   return (
-    <div className="pb-32 pt-0 px-0 max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto min-h-screen bg-[#fcfcfc]">
-       
+    <div className="min-h-screen bg-white">
+       <div className="pb-32 pt-0 px-0 max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto">
        {/* Weekly Report Modal Overlay */}
        {showWeeklyReport && (
            <WeeklyReport 
@@ -236,7 +236,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
        )}
 
        {/* Redesigned Header */}
-       <div className="sticky top-0 z-40 bg-[#fcfcfc]/95 backdrop-blur-xl border-b border-transparent transition-all duration-300">
+       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-transparent transition-all duration-300">
           <div className="px-6 pt-8 pb-4 max-w-3xl mx-auto">
              <div className="flex items-start justify-between mb-6">
                 <div className="relative">
@@ -474,6 +474,7 @@ const Timeline: React.FC<TimelineProps> = ({ entries, currentUserId, activeCircl
                   </div>
               );
           })}
+       </div>
        </div>
     </div>
   );
