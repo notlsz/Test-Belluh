@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { JournalEntry, Insight, RelationshipArchetype, UserPersona, RelationshipReceipt, RelationshipForecast } from "../types";
 
@@ -192,10 +193,12 @@ export const chatWithBelluh = async (message: string, history: { role: string, t
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Persona Style: ${persona}\n\nRecent History:\n${context}\n\nUser: ${message}\nBelluh:`
+        contents: `Persona Style: ${persona}\n\nRecent History:\n${context}\n\nUser: ${message}\nBelluh (Use plain text only, no markdown, no asterisks):`
       })
     );
-    return response.text || "Tell me more.";
+    // Strip markdown artifacts
+    const raw = response.text || "Tell me more.";
+    return raw.replace(/[*#_]/g, '').trim();
   } catch (e) {
     return handleGeminiError(e, "I'm here for you.");
   }
@@ -206,10 +209,12 @@ export const generateDailyReflection = async (entryTexts: string[], persona: Use
     const response = await retryOperation<GenerateContentResponse>(() =>
       getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Reflection for persona ${persona} based on: ${entryTexts.join('\n')}`
+        contents: `Generate a concise, 1-2 sentence reflection based on these entries using the ${persona} persona. Output plain text only. Do not use asterisks, bolding, hashtags, or headers.\n\nEntries:\n${entryTexts.join('\n')}`
       })
     );
-    return response.text || "Reflecting on your day...";
+    const text = response.text || "Reflecting on your day...";
+    // Robust sanitization against Markdown artifacts
+    return text.replace(/[*#_]/g, '').trim();
   } catch (e) {
     return "A moment of reflection.";
   }

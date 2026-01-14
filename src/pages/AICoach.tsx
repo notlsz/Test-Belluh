@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Insight, ChatMessage, RelationshipArchetype, UserPersona } from '../types';
 import { chatWithBelluh, generateDailyReflection, getRelationshipArchetype, softenConflictMessage, detectPersonaFromEntries } from '../services/geminiService';
@@ -51,6 +52,9 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                 break;
             case UserPersona.Fitzgerald:
                 initialMsg = "Your journal reads like a novel. Let's look at the latest chapter together.";
+                break;
+            case UserPersona.Camus:
+                initialMsg = "Life is made of fleeting moments. Let's examine the ones you've captured.";
                 break;
             default:
                 initialMsg = "Hello. I'm Belluh. I've been reading your story. How are you feeling today?";
@@ -163,8 +167,9 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                             <Activity size={14} />
                             <span className="text-xs font-bold uppercase tracking-widest">Current Context</span>
                         </div>
+                        {/* Sanitized Reflection Display: Removes asterisks and hashtags for cleaner UI */}
                         <h2 className="text-xl md:text-2xl font-serif text-belluh-900 leading-relaxed italic opacity-90">
-                            "{reflection}"
+                            "{reflection.replace(/[*#]/g, '').trim()}"
                         </h2>
                    </div>
                )}
@@ -184,7 +189,8 @@ const AICoach: React.FC<AICoachProps> = ({ insights, entryTexts, onTriggerPremiu
                                        <Sparkles size={14} />
                                    </div>
                                    <div className="prose prose-slate prose-p:font-serif prose-p:text-lg prose-p:leading-loose max-w-none whitespace-pre-wrap">
-                                       <p>{msg.text}</p>
+                                       {/* Sanitize Chat Messages */}
+                                       <p>{msg.text.replace(/[*#]/g, '')}</p>
                                    </div>
                                </div>
                            ) : (
