@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, ArrowRight, Activity, TrendingUp, Lock, Fingerprint, Menu, X, Heart } from 'lucide-react';
 import { ORGANIZATIONS } from '../constants';
@@ -9,6 +10,35 @@ interface LandingPageProps {
   onShowLegal: (type: 'tos' | 'privacy') => void;
   onGoToAbout: () => void;
 }
+
+const LogoItem = ({ org }: { org: typeof ORGANIZATIONS[0] }) => {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <span className="text-sm font-bold text-slate-300 uppercase tracking-widest whitespace-nowrap px-4 font-sans opacity-60 hover:opacity-100 transition-opacity">
+        {org.name}
+      </span>
+    );
+  }
+
+  return (
+    <img 
+      src={org.logo || `https://logo.clearbit.com/${org.domain}`} 
+      alt={org.name} 
+      onError={(e) => {
+          const target = e.currentTarget;
+          // Try clearbit if custom logo failed
+          if (org.logo && !target.src.includes('clearbit')) {
+             target.src = `https://logo.clearbit.com/${org.domain}`;
+          } else {
+             setError(true);
+          }
+      }}
+      className="max-h-12 max-w-full w-auto opacity-40 hover:opacity-100 hover:scale-110 transition-all duration-500 grayscale hover:grayscale-0 object-contain" 
+    />
+  );
+};
 
 const LogoMarquee = () => (
   <div className="w-full py-20 overflow-hidden relative z-20 bg-[#F8FDFF]/80 backdrop-blur-md border-y border-[#CDE9F2]">
@@ -24,20 +54,7 @@ const LogoMarquee = () => (
       <div className="flex animate-marquee items-center w-max group-hover:[animation-play-state:paused]">
         {[...ORGANIZATIONS, ...ORGANIZATIONS].map((org, i) => (
           <div key={i} className="mx-8 md:mx-12 shrink-0 flex items-center justify-center h-16 w-32">
-             <img 
-               src={org.logo || `https://logo.clearbit.com/${org.domain}`} 
-               alt={org.name} 
-               onError={(e) => {
-                   // Fallback to clearbit if custom logo fails, or hide if both fail
-                   const target = e.currentTarget;
-                   if (target.src.includes('clearbit')) {
-                       target.style.display = 'none';
-                   } else {
-                       target.src = `https://logo.clearbit.com/${org.domain}`;
-                   }
-               }}
-               className="max-h-12 max-w-full w-auto opacity-40 hover:opacity-100 hover:scale-110 transition-all duration-500 grayscale hover:grayscale-0 object-contain" 
-             />
+             <LogoItem org={org} />
           </div>
         ))}
       </div>
