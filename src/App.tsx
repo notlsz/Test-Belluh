@@ -821,9 +821,44 @@ const App: React.FC = () => {
   if (showAdmin && isUserAdmin) return <AdminMetrics onBack={() => setShowAdmin(false)} />;
 
   if (!isAuthenticated) {
-      if (authView === 'landing') return <LandingPage onGetStarted={() => { setAuthMode('signup'); setAuthView('auth'); }} onLogin={() => { setAuthMode('login'); setAuthView('auth'); }} onShowLegal={(type) => setLegalModalOpen(type)} onGoToAbout={() => setAuthView('about')} />;
-      if (authView === 'about') return <About onBack={() => setAuthView('landing')} onGetStarted={() => { setAuthMode('signup'); setAuthView('auth'); }} onLogin={() => { setAuthMode('login'); setAuthView('auth'); }} />;
-      return <Auth initialView={authMode} onLogin={handleLogin} onShowLegal={(type) => setLegalModalOpen(type)} onShowToast={showNotification} />;
+      if (authView === 'landing') {
+          return (
+              <>
+                <LandingPage 
+                    onGetStarted={() => { setAuthMode('signup'); setAuthView('auth'); }} 
+                    onLogin={() => { setAuthMode('login'); setAuthView('auth'); }} 
+                    onShowLegal={(type) => setLegalModalOpen(type)} 
+                    onGoToAbout={() => setAuthView('about')} 
+                />
+                {legalModalOpen && <LegalModal type={legalModalOpen} onClose={() => setLegalModalOpen(null)} />}
+                {notification && <Toast message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
+              </>
+          );
+      }
+      
+      if (authView === 'about') {
+          return (
+            <About 
+                onBack={() => setAuthView('landing')} 
+                onGetStarted={() => { setAuthMode('signup'); setAuthView('auth'); }} 
+                onLogin={() => { setAuthMode('login'); setAuthView('auth'); }} 
+            />
+          );
+      }
+
+      // 'auth' view
+      return (
+        <>
+            <Auth 
+                initialView={authMode}
+                onLogin={handleLogin} 
+                onShowLegal={(type) => setLegalModalOpen(type)} 
+                onShowToast={showNotification} 
+            />
+            {legalModalOpen && <LegalModal type={legalModalOpen} onClose={() => setLegalModalOpen(null)} />}
+            {notification && <Toast message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
+        </>
+      );
   }
 
   if (isOnboarding) return <Onboarding onComplete={handleOnboardingComplete} />;
@@ -837,7 +872,9 @@ const App: React.FC = () => {
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
       <TabBar currentTab={currentTab} onTabChange={(tab) => { trackEvent('tab_changed', { tab }); setCurrentTab(tab); }} onCompose={() => handleCompose()} />
       {isComposeOpen && <div className="fixed inset-0 z-[60] bg-paper animate-slide-up"><button onClick={() => setIsComposeOpen(false)} className="absolute top-6 right-6 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 z-50 transition-colors"><X size={20} /></button><Journal onAddEntry={handleAddEntry} partnerName={user.partnerName || 'Partner'} onTriggerPremium={handleTriggerPremium} initialPrompt={composePrompt} userName={user.name} partnerHasEntry={partnerHasEntry} /></div>}
+      
       {legalModalOpen && <LegalModal type={legalModalOpen} onClose={() => setLegalModalOpen(null)} />}
+      
       {artifactModalOpen && <ArtifactModal type={artifactModalOpen} onClose={() => setArtifactModalOpen(null)} entries={entries} currentUserId={user.id} userName={user.name} partnerName={user.partnerName || 'Partner'} />}
       {showPremiumOverlay && <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-fade-in" onClick={() => setShowPremiumOverlay(false)}><div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full text-center relative overflow-hidden shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}><div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-belluh-300 via-purple-300 to-indigo-300" /><div className="w-20 h-20 bg-belluh-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-apple animate-float"><Sparkles size={32} className="text-belluh-500" /></div><h2 className="text-3xl font-serif text-slate-900 mb-3 tracking-tight">Belluh Premium</h2><p className="text-slate-500 mb-8 text-sm leading-relaxed font-medium">Unlock deeper intimacy.</p><button onClick={() => setShowPremiumOverlay(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-sm hover:bg-black transition-transform active:scale-95 shadow-xl shadow-slate-200">Start Free Trial</button><button onClick={() => setShowPremiumOverlay(false)} className="w-full py-3 text-xs text-slate-400 hover:text-slate-600 font-bold uppercase tracking-widest">Maybe Later</button></div></div>}
     </div>

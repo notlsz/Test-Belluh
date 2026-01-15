@@ -1,7 +1,8 @@
 
 import React, { useRef } from 'react';
 import { X, FileText, Shield, ArrowRight } from 'lucide-react';
-import { TOS_TEXT, PRIVACY_POLICY_TEXT } from '../constants';
+import { TOS_TEXT } from '../data/Terms';
+import { PRIVACY_POLICY_TEXT } from '../data/PrivacyPolicy';
 
 interface LegalModalProps {
   type: 'tos' | 'privacy';
