@@ -42,11 +42,6 @@ export const ORGANIZATIONS: Organization[] = [
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Harvard_University_shield.png/1024px-Harvard_University_shield.png'
   },
   { 
-    name: 'MIT', 
-    domain: 'mit.edu',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/MIT_logo.svg'
-  },
-  { 
     name: 'Yale', 
     domain: 'yale.edu',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Yale_University_Shield_1.svg/1024px-Yale_University_Shield_1.svg.png'
