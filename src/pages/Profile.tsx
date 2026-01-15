@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, LoveNote, Goal, Circle, CircleStatus, JournalEntry, Mood, RelationshipReceipt, ColorTheme } from '../types';
 import { Settings, Heart, Plus, X, Trash2, Shield, ChevronRight, Users, Check, Send, Trophy, Activity, Lock, Flame, Download, CheckCircle2, Mail, Archive, Star, FileText, Film, Edit3, Camera, UserPlus, LogOut, Infinity, ArrowRight, Play, Receipt, Share2, Instagram, Facebook, Copy, MessageCircle, Twitter, Camera as CameraIcon, Link as LinkIcon, Upload, Calendar, Clock, Gift, MoreHorizontal, PenLine, Sparkles, Maximize2, Eye, EyeOff, MoveDiagonal, RefreshCw, Palette } from 'lucide-react';
@@ -673,7 +674,7 @@ const Profile: React.FC<ProfileProps> = ({ user, entries = [], streak = 0, onLog
                    </div>
                ) : (
                    <div className="flex flex-col items-center gap-6 animate-slide-up w-full max-w-[360px]" onClick={e => e.stopPropagation()}>
-                       <div className="w-full max-h-[65vh] overflow-y-auto overflow-x-visible px-2 pb-4 pt-2">
+                       <div className="w-full max-h-[65vh] overflow-y-auto no-scrollbar overflow-x-visible px-2 pb-4 pt-2">
                            <div className="w-[340px] relative shadow-2xl transition-all duration-500 mx-auto" style={{ filter: 'drop-shadow(0px 20px 30px rgba(0,0,0,0.3))' }}>
                                 <div className={`relative w-full p-8 pb-12 transition-colors duration-500 ${currentColor.text}`} style={{ backgroundColor: currentColor.hex }}>
                                     <div className="absolute top-0 left-0 w-full h-3 -mt-3" style={{ background: `radial-gradient(circle at 10px 10px, ${currentColor.hex} 10px, transparent 10.5px)`, backgroundSize: '20px 20px', backgroundPosition: 'top center', transform: 'rotate(180deg)' }}></div>
